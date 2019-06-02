@@ -23,6 +23,18 @@ libraryDependencies += "org.jooq" % "jooq" % "3.11.11"
 libraryDependencies += "org.jooq" % "jooq-meta" % "3.11.11"
 libraryDependencies += "org.jooq" % "jooq-codegen" % "3.11.11"
 
+// https://mvnrepository.com/artifact/org.apache.commons/commons-collections4
+//libraryDependencies += "org.apache.commons" % "commons-collections4" % "4.1"
+libraryDependencies += "commons-lang" % "commons-lang" % "2.6"
+
+libraryDependencies += "com.github.ben-manes.caffeine" % "caffeine" % "2.7.0"
+// https://mvnrepository.com/artifact/org.redisson/redisson
+libraryDependencies += "org.redisson" % "redisson" % "3.2.0"
+
+// https://mvnrepository.com/artifact/commons-cli/commons-cli
+libraryDependencies += "commons-cli" % "commons-cli" % "1.4"
+
+
 lazy val root = (project in file(".")).enablePlugins()
 
 assemblyMergeStrategy in assembly := {
