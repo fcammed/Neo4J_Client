@@ -1,14 +1,19 @@
 package com.vector.repo;
 
 import com.vector.model.AppliedPromotion;
+import com.vector.service.CompressionUtil;
+import com.vector.service.zip.CRCInputStream;
+import com.vector.service.zip.GZIPFooter;
+import com.vector.service.zip.GZIPHeader;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.attribute.FileTime;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
+import java.util.stream.Collectors;
+import java.util.zip.*;
 
 public class RepoFile {
 	private String nombreArchivo;
@@ -16,12 +21,22 @@ public class RepoFile {
 	private BufferedWriter out = null;
 	private BufferedReader br = null;
 	private ZipOutputStream zipStream;
+	private DeflaterOutputStream deflaterStream;
+	private Deflater zipDeflater;
+	private ByteArrayOutputStream outputStream;
 	private boolean isZipped = false;
+	private boolean isZippedSplit = false;
+	private CompressionUtil cutil = null;
+	private CRCInputStream crc;
+	private GZIPHeader gzHeader;
+	private final int nbuffer=5 ;
+	private String buffer="";
+	private int clineas=0;
 	//= new ZipOutputStream(
 	//		new FileOutputStream(zipFileName))
 
 	private String separador_field = "|";
-	private static final String separador_registro = "\n";
+	private static final String separador_registro = "\n\r";
 
 	public RepoFile(String nombreArchivo, String rutaArchivo, String separador_field  ) {
 		this.nombreArchivo = nombreArchivo;
@@ -48,6 +63,9 @@ public class RepoFile {
 	}
 
 	public RepoFile( long input_sufijo, String separador_field , int workerId, String rutaArchivo, boolean separar_por_workerId ) {
+
+		cutil = new CompressionUtil();
+
 		if (rutaArchivo.equals("")) rutaArchivo = "C:/DATOSP~1/Vector/PoC/PLAYPR~1/poc-bigfiles-upload/Uploadfiles/explosionado/";
 		SimpleDateFormat formatf = new java.text.SimpleDateFormat("YYYMMdd_hhmmss");
 		String sufijo = "";
@@ -62,6 +80,23 @@ public class RepoFile {
 			else
 				nombreArchivolog =  "explosionadoECI" + sufijo + ".csv";
 		}
+		this.nombreArchivo = nombreArchivolog;
+		this.rutaArchivo = rutaArchivo + "/"+nombreArchivolog;
+		this.separador_field = separador_field;
+	}
+
+	public RepoFile( long input_sufijo, String separador_field , int workerId, String rutaArchivo, boolean separar_por_workerId, boolean leer ) {
+		if (rutaArchivo.equals("")) rutaArchivo = "C:/DATOSP~1/Vector/PoC/PLAYPR~1/poc-bigfiles-upload/Uploadfiles/explosionado/";
+		SimpleDateFormat formatf = new java.text.SimpleDateFormat("YYYMMdd_hhmmss");
+		String sufijo = formatf.format(System.currentTimeMillis());
+		String nombreArchivolog = "explosionadoECI_data.csv";
+		if (leer)
+			nombreArchivolog = "explosionadoECI_data.csv";
+		else
+			if (separar_por_workerId)
+				nombreArchivolog = "explosionadoECI_log"+ sufijo+"_R.csv";
+			else
+				nombreArchivolog = "explosionadoECI_log"+sufijo+"_W.csv";
 		this.nombreArchivo = nombreArchivolog;
 		this.rutaArchivo = rutaArchivo + "/"+nombreArchivolog;
 		this.separador_field = separador_field;
@@ -100,8 +135,78 @@ public class RepoFile {
 			entry.setComment("Fichero de salida zip");
 			zipStream.putNextEntry(entry);
 
-			/*Writer fstream = new OutputStreamWriter(new FileOutputStream(rutaArchivo), "UTF8");
-			out = new BufferedWriter(fstream);*/
+			Writer fstream = new OutputStreamWriter(new FileOutputStream(rutaArchivo), "UTF8");
+			out = new BufferedWriter(fstream);
+		} catch (IOException e) {
+			System.err.println("Error: " + e.getMessage());
+		}
+	}
+
+	public void abreFicheroW_zipSplit() {
+		try {
+			//0
+			//CRCInputStream crc = new CRCInputStream(is);
+			/*outputStream = new ByteArrayOutputStream();
+			FileOutputStream fos = new FileOutputStream(rutaArchivo+".zip");
+			Writer fstream = new OutputStreamWriter(fos);
+			out = new BufferedWriter(fstream);
+
+			crc = new CRCInputStream();
+			gzHeader = new GZIPHeader();
+			gzHeader.writeBytes(outputStream);
+			out.write(outputStream.toString());
+			outputStream.reset();
+
+			zipDeflater = new Deflater(Deflater.BEST_SPEED,true);
+			deflaterStream = new DeflaterOutputStream(fos, zipDeflater);
+			isZippedSplit = true;*/
+
+			clineas=0;
+
+			//1
+			zipStream = new ZipOutputStream(new FileOutputStream(rutaArchivo+".zip"));
+			isZippedSplit = true;
+			zipStream.setMethod(ZipOutputStream.DEFLATED);
+			zipStream.setLevel(1);
+			ZipEntry entry = new ZipEntry(nombreArchivo);
+			//entry.setCreationTime(FileTime.fromMillis(file.toFile().lastModified()));
+			entry.setComment("Fichero de salida zip");
+			zipStream.putNextEntry(entry);
+
+			//2
+			/*outputStream = new ByteArrayOutputStream();
+			Writer fstream = new OutputStreamWriter(new FileOutputStream(rutaArchivo+".zip"));
+			out = new BufferedWriter(fstream);
+			zipStream = new ZipOutputStream(outputStream);
+			isZippedSplit = true;
+			zipStream.setMethod(ZipOutputStream.DEFLATED);
+			ZipEntry entry = new ZipEntry(nombreArchivo);
+			//entry.setCreationTime(FileTime.fromMillis(file.toFile().lastModified()));
+			entry.setComment("Fichero de salida zip");
+			zipStream.putNextEntry(entry);
+			out.write(outputStream.toString());*/
+
+
+			//outputStream.reset();
+		} catch (IOException e) {
+			System.err.println("Error: " + e.getMessage());
+		}
+	}
+
+	public void flush() {
+		try {
+			this.out.flush();
+			/*if(!isZipped) {
+				if (out != null) {
+					out.close();
+				}
+			}
+			else {
+				if(this.zipStream != null) {
+					zipStream.closeEntry();
+					zipStream.close();
+				}
+			}*/
 		} catch (IOException e) {
 			System.err.println("Error: " + e.getMessage());
 		}
@@ -119,6 +224,17 @@ public class RepoFile {
 		return result;
 	}
 
+	public String readLine () {
+		String result = "";
+		try {
+			result = br.readLine();
+		//br.lines().collect(Collectors.joining());
+		} catch (IOException e) {
+			System.err.println("Error: " + e.getMessage());
+		}
+		return result;
+	}
+
 	public void writeLine(AppliedPromotion mbr) {
 		try {
 			out.write(mbr.getCanalVta() + separador_field +
@@ -126,16 +242,55 @@ public class RepoFile {
 					mbr.getcCenVta()+ separador_field +
 					mbr.getcEmprVta() + separador_field +
 					mbr.getcFabrica()+ separador_field +
-					mbr.getcHoraFin() + separador_registro);
+					mbr.getcHoraFin() ); //+ separador_registro);
+			out.newLine();
 		} catch (IOException e) {
 			System.err.println("Error: " + e.getMessage());
 		}
 	}
 
-	public void writeLineString(String linea) {
+	public void writeLine(String linea) {
 		try {
 			if (!isZipped)
-				out.write(linea);
+				if (!isZippedSplit)
+				{
+					out.write(linea);
+					out.newLine();
+				}
+				else {
+
+					clineas = clineas + 1;
+					//0
+					/*deflaterStream.write(linea.getBytes(), 0, linea.length());
+					crc.read(linea.getBytes());*/
+
+					//1
+					buffer = buffer + linea+ "\r\n";
+					if (clineas>=nbuffer)
+					{
+						zipStream.write(buffer.getBytes(), 0, buffer.length());
+						buffer="";
+						clineas = 0;
+
+					}
+
+					//2
+					/*zipStream.write(linea.getBytes(), 0, linea.length());
+					out.write(outputStream.toString());
+					outputStream.reset();*/
+
+					//3
+					//byte[] zipeada = zip(linea);
+					//out.write(zipeada.toString());
+
+
+					//4
+					//byte[] zipeada =cutil.zipCompression(linea);
+					//out.write(zipeada.toString());
+
+					//5
+				}
+
 			else {
 				//while ((amountRead = inputStream.read(readBuffer)) > 0) {
 				zipStream.write(linea.getBytes(), 0, linea.length());
@@ -150,21 +305,60 @@ public class RepoFile {
 	public void writeLine(List<String> mbl) {
 		int count =0;
 		try {
-			count = 0;
-			for (String field:mbl
-			) {
-				if (count != 0)
-					out.write(separador_field);
-				if (field==null)
-					out.write("");
-				else
-					if (field=="null")
-						out.write("");
-					else
-						out.write(field);
-				count = count +1;
+			if (!isZipped)
+				if (!isZippedSplit)
+				{
+					count = 0;
+					for (String field:mbl
+					) {
+						if (count != 0)
+							out.write(separador_field);
+						//out.newLine();
+						if (field==null)
+							out.write("");
+						else
+						if (field=="null")
+							out.write("");
+						else
+							out.write(field);
+						count = count +1;
+					}
+					//out.write(separador_registro);
+					out.newLine();
+				}
+				else {
+					clineas = clineas + 1;
+					count = 0;
+					for (String field:mbl
+					) {
+						if (count != 0)
+							buffer = buffer + separador_field;
+						//out.newLine();
+						if (field==null) {
+							buffer = buffer +"";
+						}
+						else
+						if (field=="null") {
+							buffer = buffer +"";
+						}
+						else
+							buffer = buffer + field;
+						count = count +1;
+					}
+					//out.write(separador_registro);
+					buffer = buffer + "\r\n"; //newLine();
+
+					//buffer = buffer + linea;
+					if (clineas>=nbuffer)
+					{
+						zipStream.write(buffer.getBytes(), 0, buffer.length());
+						buffer="";
+						clineas = 0;
+					}
+				}
+			else {
+
 			}
-			out.write(separador_registro);
 		} catch (IOException e) {
 			System.err.println("Error: " + e.getMessage());
 		}
@@ -177,21 +371,25 @@ public class RepoFile {
 			) {
 				count = 0;
 				out.write(letra);
-				out.write(separador_field);
+				out.newLine();
+				//out.write(separador_field);
 				out.write(barra);
-				out.write(separador_field);
+				out.newLine();
+				//out.write(separador_field);
 				count = count +1;
 				for (String field:mbr
 				) {
 					if (count != 0)
-						out.write(separador_field);
+						//out.write(separador_field);
+						out.newLine();
 					if (field==null)
 						out.write("");
 					else
 						out.write(field);
 					count = count +1;
 				}
-				out.write(separador_registro);
+				//out.write(separador_registro);
+				out.newLine();
 			}
 		} catch (IOException e) {
 			System.err.println("Error: " + e.getMessage());
@@ -225,7 +423,8 @@ public class RepoFile {
 						out.write(field);
 					count = count +1;
 				}
-				out.write(separador_registro);
+				//out.write(separador_registro);
+				out.newLine();
 			}
 		} catch (IOException e) {
 			System.err.println("Error: " + e.getMessage());
@@ -236,246 +435,77 @@ public class RepoFile {
 
 		try {
 			if(!isZipped) {
-				if (out != null) {
-					out.close();
+				if(!isZippedSplit) {
+					if (out != null) {
+						out.close();
+					}
+				} else {
+					//0
+					//deflaterStream.close();
+
+					/*deflaterStream.finish();
+					GZIPFooter gzFooter = new GZIPFooter(crc.getCRCValue(), crc.getByteCount());
+
+					gzFooter.writeBytes(outputStream);
+					out.write(outputStream.toString());
+					outputStream.reset();
+
+					out.flush();
+					out.close();*/
+
+					//1
+					if (clineas>0) zipStream.write(buffer.getBytes(), 0, buffer.length());
+					zipStream.closeEntry();
+					zipStream.close();
+
+					//2
+					/*zipStream.closeEntry();
+					out.write(outputStream.toString());
+					zipStream.close();
+					out.close();*/
+
+					//3
 				}
 			}
 			else {
 				if(this.zipStream != null) {
-					zipStream.closeEntry();
+					//0
 					zipStream.close();
+
+					//1
+					//zipStream.closeEntry();
+					//zipStream.close();
 				}
 			}
 		} catch (IOException e) {
 			System.err.println("Error: " + e.getMessage());
 		}
 	}
-/*
-	public boolean readLine(modelLocalDccRegistry linea, boolean leer) {
-		boolean result = true;
+
+	public void cierraFicheroR() {
 		try {
-			String line = br.readLine();
-			if (line != null) {
-				if (leer) {
-					int count = 0;
-					String[] fields = line.split(separador_field, -1);
-					for (String contenido : fields) {
-						switch (count) {
-							case 0:
-								linea.setLocal_electoral(contenido);
-								break;
-							case 1:
-								linea.setNombre_local(contenido);
-								break;
-							case 2:
-								linea.setDcc_local(contenido);
-								break;
-						}
-						count = count + 1;
-					}
-				}
-			}  else {
-				result = false; }
+			if (br != null) {
+				br.close();
+			}
 		} catch (IOException e) {
 			System.err.println("Error: " + e.getMessage());
 		}
-		return result;
 	}
 
-	public boolean readLine(modelCandidaturaMuniRegistry linea, boolean leer) {
-		boolean result = true;
-		try {
-			String line = br.readLine();
-			if (line != null) {
-				if (leer) {
-					int count = 0;
-					String[] fields = line.split(separador_field, -1);
-					for (String contenido : fields) {
-						switch (count) {
-							case 0:
-								linea.setCodigo_municipio(contenido);
-								break;
-							case 1:
-								linea.setCandidatura(contenido);
-								break;
-							case 2:
-								linea.setSiglas(contenido);
-								break;
-							case 3:
-								linea.setPeso(contenido);
-								break;
-						}
-						count = count + 1;
-					}
-				}
-			}  else {
-				result = false; }
-		} catch (IOException e) {
-			System.err.println("Error: " + e.getMessage());
+
+	public static byte[] zip(final String str) {
+		if ((str == null) || (str.length() == 0)) {
+			throw new IllegalArgumentException("Cannot zip null or empty string");
 		}
-		return result;
+
+		try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
+			try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(byteArrayOutputStream)) {
+				gzipOutputStream.write(str.getBytes(StandardCharsets.UTF_8));
+			}
+			return byteArrayOutputStream.toByteArray();
+		} catch(IOException e) {
+			throw new RuntimeException("Failed to zip content", e);
+		}
 	}
 
-	public boolean readLine(modelMesasRepRegistry linea, boolean leer) {
-		boolean result = true;
-		try {
-			String line = br.readLine();
-			if (line != null) {
-				if (leer) {
-					int count = 0;
-					String[] fields = line.split(separador_field, -1);
-					for (String contenido : fields) {
-						switch (count) {
-							case 0:
-								linea.setCodigo_local(contenido);
-								break;
-							case 1:
-								linea.setNombre_local(contenido);
-								break;
-							case 2:
-								linea.setMunicipio(contenido);
-								break;
-							case 3:
-								linea.setCodigo_mesa(contenido);
-								break;
-							case 4:
-								linea.setNif(contenido);
-								break;
-							case 5:
-								linea.setPrimer_apellido(contenido);
-								break;
-							case 6:
-								linea.setSegundo_apellido(contenido);
-								break;
-							case 7:
-								linea.setNombre(contenido);
-								break;
-							case 8:
-								linea.setTelefono_movil(contenido);
-								break;
-							case 9:
-								linea.setTelefono_alternativo(contenido);
-								break;
-							case 10:
-								linea.setCodigo_representante(contenido);
-								break;
-							case 11:
-								linea.setCoordinador(contenido);
-								break;
-							case 12:
-								linea.setN_dispositivo(contenido);
-								break;
-							case 13:
-								linea.setRef(contenido);
-								break;
-						}
-						count = count + 1;
-					}
-				}
-			}  else {
-				result = false; }
-		} catch (IOException e) {
-			System.err.println("Error: " + e.getMessage());
-		}
-		return result;
-	}
-
-	public boolean readLine(modelMesasLocalRegistry linea, boolean leer) {
-		boolean result = true;
-		try {
-			String line = br.readLine();
-			if (line != null) {
-				if (leer) {
-					int count = 0;
-					String[] fields = line.split(separador_field, -1);
-					for (String contenido : fields) {
-						switch (count) {
-							case 0:
-								linea.setLocal_electoral(contenido);
-								break;
-							case 1:
-								linea.setNombre_local(contenido);
-								break;
-							case 2:
-								linea.setMunicipio(contenido);
-								break;
-							case 3:
-								linea.setCodigo_municipio(contenido);
-								break;
-							case 4:
-								linea.setCodigo_mesa(contenido);
-								break;
-							case 5:
-								linea.setCer(contenido);
-								break;
-						}
-						count = count + 1;
-					}
-				}
-			}  else {
-				result = false; }
-		} catch (IOException e) {
-			System.err.println("Error: " + e.getMessage());
-		}
-		return result;
-	}
-
-	public boolean readLine(modelResultadoMunRegistry linea, boolean leer) {
-		boolean result = true;
-		try {
-			String line = br.readLine();
-			if (line != null) {
-				if (leer) {
-					int count = 0;
-					String[] fields = line.split(separador_field, -1);
-					for (String contenido : fields) {
-						switch (count) {
-							case 0:
-								linea.setConvocatoria(contenido);
-								break;
-							case 1:
-								linea.setCcaa(contenido);
-								break;
-							case 2:
-								linea.setCodProv(contenido);
-								break;
-							case 3:
-								//linea.setCodigo_municipio(contenido);
-								break;
-							case 4:
-								linea.setMesa(contenido);
-								break;
-							case 5:
-								linea.setVotosAvance1(contenido);
-								break;
-							case 6:
-								linea.setVotosAvance2(contenido);
-								break;
-							case 7:
-								linea.setVotantes(contenido);
-								break;
-							case 8:
-								linea.setVotosBlanco(contenido);
-								break;
-							case 9:
-								linea.setVotosNulos(contenido);
-								break;
-							case 10:
-								linea.setVotosCandidaturas(contenido);
-								break;
-							case 11:
-								linea.setCandidaturas(contenido);
-								break;
-						}
-						count = count + 1;
-					}
-				}
-			}  else {
-				result = false; }
-		} catch (IOException e) {
-			System.err.println("Error: " + e.getMessage());
-		}
-		return result;
-	}
-*/
 }

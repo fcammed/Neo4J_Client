@@ -196,6 +196,8 @@ object HelloWorld {
     var n_files = "1"
     var tamano_files = "1000000"
     var zipped = "false"
+    var leer = "false"
+    var hilos = "false"
 
     // parse connection string from command line
     val options = new Options
@@ -215,6 +217,8 @@ object HelloWorld {
     options.addOption(new Option("nfiles", true, "Numero de ficheros a escribir en el test de escritura"))
     options.addOption(new Option("lineasfile", true, "Número de líneas de cada fichero en el test de escritura"))
     options.addOption(new Option("iszipped", true, "Indica si se comprime o no"))
+    options.addOption(new Option("leer", true, "Indica si se leen los datos a esribir o no"))
+    options.addOption(new Option("hilos", true, "Indica si se ejecuta WriteTest en modo hilos"))
     val clp = new DefaultParser
     val cl = clp.parse(options, args)
     if (cl.getOptionValue("paginado") != null) agrupando = cl.getOptionValue("paginado")
@@ -232,11 +236,13 @@ object HelloWorld {
     if (cl.getOptionValue("nfiles") != null) n_files = cl.getOptionValue("nfiles")
     if (cl.getOptionValue("lineasfile") != null) tamano_files = cl.getOptionValue("lineasfile")
     if (cl.getOptionValue("iszipped") != null) zipped = cl.getOptionValue("iszipped")
+    if (cl.getOptionValue("leer") != null) leer = cl.getOptionValue("leer")
+    if (cl.getOptionValue("hilos") != null) hilos = cl.getOptionValue("hilos")
 
     //System.out.println("usu:" + usu + " pass:" + pass)
 
     if (mode.equals("help") || mode.equals("WriteTest")) {
-      if (mode.equals("WriteTest")) new WriteTest(args,new Integer(n_files).toInt,new Integer(tamano_files).toInt,sobreescribir, new Integer(numeroWorkers).toInt, new Integer(workerId).toInt, rutaArchivo, zipped)
+      if (mode.equals("WriteTest")) new WriteTest(args,new Integer(n_files).toInt,new Integer(tamano_files).toInt,sobreescribir, new Integer(numeroWorkers).toInt, new Integer(workerId).toInt, rutaArchivo, zipped, leer,hilos)
       if (mode.equals("help")) {
         println("Argumentos:");
         println("\"eciB\" - Borra el grafo actual y regenera los nodos básicos del grafo de prueba ECI");
@@ -261,6 +267,7 @@ object HelloWorld {
         println("                          - Parámetro \"sobreescribir\" 0->Escribe todos los ficheros, 1->Sobreescribe los ficheros parciales");
       }
     } else {
+
       val neo4jpc = new Neo4jPoolConnection(entorno,usu, pass)
       val db = new Neo4j(neo4jpc.driver, neo4jpc.explofilepath, neo4jpc.modelograph)
       val formatter = java.text.NumberFormat.getIntegerInstance()
