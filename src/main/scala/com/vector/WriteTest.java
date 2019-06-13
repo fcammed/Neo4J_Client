@@ -13,13 +13,14 @@ import java.util.regex.Pattern;
 public class WriteTest {
 
 	public static void main(String[] args) {
-		int n_files=2, tamano_files=1043359, numero_workers=1, workerId=1;
-		String sobreesccribir="0", rutaArchivo="", zipped="false";
-		boolean leer=false;
-		boolean prueba = false;
+		int n_files = 10, tamano_files = 1043359, numero_workers = 3, workerId = 1;
+		String sobreesccribir = "0", rutaArchivo = "", zipped = "true", modo_parser = "3", modo_modif = "1";
+		boolean leer = true;
+		boolean monolitico = false;
 
 		//write_test(args,264,(200*1024*1024/201) ,"0",1,1, "","true",false);
-		if (prueba) write_test(args,n_files, tamano_files ,sobreesccribir,numero_workers,workerId, rutaArchivo,zipped,leer); //(200*1024*1024/201)
+		if (monolitico)
+			write_test(args, n_files, tamano_files, sobreesccribir, numero_workers, workerId, rutaArchivo, zipped, leer, modo_parser, modo_modif); //(200*1024*1024/201)
 		// un tercio - 50 Gb ; con diferentes tamaños y número de ficheros
 		//write_test(args,264,  1043359,"0",1,1, "","true",false); //(200*1024*1024/201)
 		//write_test(args,1,  1043359,"1",1,1, "","true",false); //(200*1024*1024/201)
@@ -28,8 +29,8 @@ public class WriteTest {
 		//write_test(args,1,  275446776,"0",1,1, "","true",false); //51,5GB (200*1024*1024/201)
 		//write_test(args,1,  826340328,"0",1,1, "","true",false); //154,5GB (200*1024*1024/201)
 
-		if (!prueba) {
-			BlockingQueueProcessFragment bqpf = new BlockingQueueProcessFragment(n_files, tamano_files ,sobreesccribir,3,workerId, rutaArchivo,zipped,leer);
+		else {
+			BlockingQueueProcessFragment bqpf = new BlockingQueueProcessFragment(n_files, tamano_files, sobreesccribir, numero_workers, workerId, rutaArchivo, zipped, leer, modo_parser, modo_modif);
 			try {
 				bqpf.leer();
 			} catch (Exception e) {
@@ -39,32 +40,31 @@ public class WriteTest {
 
 	}
 
-	public WriteTest(String[] args,int n_files,int tamano_files,String sobreescribir, int numero_workers,int workerId, String rutaArchivo, String zipped, String leer, String hilos) {
+	public WriteTest(String[] args, int n_files, int tamano_files, String sobreescribir, int numero_workers, int workerId, String rutaArchivo, String zipped, String leer, String hilos, String modo_parser, String modo_modif) {
 		boolean leerb;
 		if (leer.equals("false"))
 			leerb = false;
 		else
 			leerb = true;
 		if (hilos.equals("true")) {
-			BlockingQueueProcessFragment bqpf = new BlockingQueueProcessFragment(n_files, tamano_files, sobreescribir, numero_workers, workerId, rutaArchivo, zipped, leerb);
+			BlockingQueueProcessFragment bqpf = new BlockingQueueProcessFragment(n_files, tamano_files, sobreescribir, numero_workers, workerId, rutaArchivo, zipped, leerb, modo_parser, modo_modif);
 			try {
 				bqpf.leer();
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-		}
-		else
-			write_test(args,n_files,tamano_files,sobreescribir, numero_workers,workerId,rutaArchivo,zipped, leerb);
+		} else
+			write_test(args, n_files, tamano_files, sobreescribir, numero_workers, workerId, rutaArchivo, zipped, leerb, modo_parser, modo_modif);
 	}
 
-	public static void write_test(String[] args,int n_files,int tamano_files,String sobreescribir, int numero_workers,int workerId, String rutaArchivo, String zipped, boolean leer) {
-		int cuenta=0;
+	public static void write_test(String[] args, int n_files, int tamano_files, String sobreescribir, int numero_workers, int workerId, String rutaArchivo, String zipped, boolean leer, String modo_parser, String modo_modif) {
+		int cuenta = 0;
 
-		RepoFile flog = new RepoFile(0,",", workerId, rutaArchivo);
+		RepoFile flog = new RepoFile(0, ",", workerId, rutaArchivo);
 		flog.abreFicheroW();
 		flog.writeLine(new ArrayList<String>(Arrays.asList("WriteTest -> ",
-				"Numero ficheros:" + n_files ,
-				"Lineas por fichero:" + tamano_files ,
+				"Numero ficheros:" + n_files,
+				"Lineas por fichero:" + tamano_files,
 				"numero workers:" + numero_workers,
 				"workerId:" + workerId,
 				"sobreescritura:" + sobreescribir,
@@ -73,26 +73,26 @@ public class WriteTest {
 
 		long primerResultT = System.currentTimeMillis();
 
-		while (cuenta<n_files) {
-			cuenta = cuenta +1;
+		while (cuenta < n_files) {
+			cuenta = cuenta + 1;
 
 			long primerResultP = System.currentTimeMillis();
 			RepoFile fdatos;
-			RepoFile fleer = new RepoFile(workerId, "|", workerId, rutaArchivo,false, true);
+			RepoFile fleer = new RepoFile(workerId, "|", workerId, rutaArchivo, false, true);
 			if (sobreescribir.equals("1")) //Sobreescribe siempre el mismo fichero para no ocupar espacio en disco
-				fdatos = new RepoFile(workerId, "|", workerId, rutaArchivo,false);
+				fdatos = new RepoFile(workerId, "|", workerId, rutaArchivo, false);
 			else
 				fdatos = new RepoFile(cuenta, "|", workerId, rutaArchivo, true);
-			if(!zipped.equals("true"))
+			if (!zipped.equals("true"))
 				fdatos.abreFicheroW();
 			else
 				//fdatos.abreFicheroW_zip();
 				fdatos.abreFicheroW_zipSplit();
 
-			int nlineas=0;
-			int cada=0;
+			int nlineas = 0;
+			int cada = 0;
 			boolean seguir = false;
-			String buf_linea= "";
+			String buf_linea = "";
 			String concatena_linea = "";
 			List<String> linea = new ArrayList<String>();
 			if (leer) {
@@ -105,81 +105,91 @@ public class WriteTest {
 
 			} else {
 				buf_linea = "P|B001000811538362||7|0|null|null|00|P18354008|20190101|20190630|0000|2359|B|null|null|P - PARCEIROS HOTEIS|0040401063771|P - PARCEIROS HOTEIS GAIA                         |1  |                        ";
-				seguir = nlineas<tamano_files;
+				seguir = nlineas < tamano_files;
 			}
 
 			//while (nlineas<tamano_files) {
 			while (seguir) {
 				nlineas = nlineas + 1;
-				cada=cada+1;
+				cada = cada + 1;
 				//fdatos.writeLineString(linea);
 				//fdatos.writeLine(linea);
-				if (false && cada>25000)  {
+				if (false && cada > 25000) {
 					fdatos.flush();
-					cada =0;
+					cada = 0;
 				}
 
 				//Parsear--------------------------------------------------------------------
-
-				//1
-				//linea = Arrays.asList(buf_linea.split(Pattern.quote("|")));
-
-				//2
-						/*linea = new ArrayList<>();
-						String trozo ="";
-						for ( int i = 0; i<buf_linea.length(); i++ ) {
-							if (buf_linea.getBytes()[i] == '|')
-							{
+				switch (modo_parser) {
+					case "0":
+						//no hacemos nada
+						break;
+					case "1":
+						linea = Arrays.asList(buf_linea.split(Pattern.quote("|")));
+						break;
+					case "2":
+						linea = new ArrayList<>();
+						String trozo = "";
+						for (int i = 0; i < buf_linea.length(); i++) {
+							if (buf_linea.getBytes()[i] == '|') {
 								linea.add(trozo);
-								trozo="";
-							}
-							else
-								trozo = trozo + (char)buf_linea.getBytes()[i];
+								trozo = "";
+							} else
+								trozo = trozo + (char) buf_linea.getBytes()[i];
 							//concatena_linea = concatena_linea + i.next();
-						}*/
-
-				//3
-				linea = Arrays.asList(buf_linea.substring(0,1),
-						buf_linea.substring(2,18),
-						buf_linea.substring(20,21),
-						buf_linea.substring(21,21),
-						buf_linea.substring(22,23),
-						buf_linea.substring(24,28),
-						buf_linea.substring(29,33),
-						buf_linea.substring(34,36),
-						buf_linea.substring(37,46),
-						buf_linea.substring(47,55),
-						buf_linea.substring(56,64),
-						buf_linea.substring(65,69),
-						buf_linea.substring(70,74),
-						buf_linea.substring(75,76),
-						buf_linea.substring(77,81),
-						buf_linea.substring(82,86),
-						buf_linea.substring(87,107),
-						buf_linea.substring(108,121),
-						buf_linea.substring(122,172),
-						buf_linea.substring(173,176),
-						buf_linea.substring(177,201)
-				);
-
-				//4
-						/*linea = Arrays.asList(buf_linea.substring(0,121),
-								buf_linea.substring(122,172),
-								buf_linea.substring(173,176),
-								buf_linea.substring(177,201)
-						);*/
+						}
+						break;
+					case "3":
+						linea = Arrays.asList(buf_linea.substring(0, 1),
+								buf_linea.substring(2, 18),
+								buf_linea.substring(20, 21),
+								buf_linea.substring(21, 21),
+								buf_linea.substring(22, 23),
+								buf_linea.substring(24, 28),
+								buf_linea.substring(29, 33),
+								buf_linea.substring(34, 36),
+								buf_linea.substring(37, 46),
+								buf_linea.substring(47, 55),
+								buf_linea.substring(56, 64),
+								buf_linea.substring(65, 69),
+								buf_linea.substring(70, 74),
+								buf_linea.substring(75, 76),
+								buf_linea.substring(77, 81),
+								buf_linea.substring(82, 86),
+								buf_linea.substring(87, 107),
+								buf_linea.substring(108, 121),
+								buf_linea.substring(122, 172),
+								buf_linea.substring(173, 176),
+								buf_linea.substring(177, 201)
+						);
+						break;
+					case "4":
+						linea = Arrays.asList(buf_linea.substring(0, 121),
+								buf_linea.substring(122, 172),
+								buf_linea.substring(173, 176),
+								buf_linea.substring(177, 201)
+						);
+						break;
+				}
 
 				//Modificar--------------------------------------------------------------------------------
-				if (true) {//if ((cada % 2) == 0 )
-					//concatena_linea = "";
-					for (ListIterator i = linea.listIterator(); i.hasNext(); ) {
-						i.set("x" + i.next());
-						//concatena_linea = concatena_linea + "x" + i.next();
-					}
+
+				switch (modo_modif) {
+					case "0":
+						//no hacemos nada
+						break;
+					case "1":
+						for (ListIterator i = linea.listIterator(); i.hasNext(); ) {
+							i.set("x" + i.next());
+						}
+						break;
 				}
 
 				//Escribir----------------------------------------------------------------------------------
-				fdatos.writeLine(linea);
+				if (modo_parser.equals("0"))
+					fdatos.writeLine(buf_linea);
+				else
+					fdatos.writeLine(linea);
 
 				//Next---------------------------------------------------------------------------------------
 				if (leer) {
@@ -188,7 +198,7 @@ public class WriteTest {
 				} else {
 					//linea = "P|B001000811538362||7|0|null|null|00|P18354008|20190101|20190630|0000|2359|B|null|null|P - PARCEIROS HOTEIS|0040401063771|P - PARCEIROS HOTEIS GAIA                         |1  |                        ";
 					//fdatos.writeLine(buf_linea);
-					seguir = nlineas<tamano_files;
+					seguir = nlineas < tamano_files;
 				}
 			}
 			if (leer) {
@@ -199,14 +209,14 @@ public class WriteTest {
 			fdatos.cierraFichero();
 			long finResultP = System.currentTimeMillis();
 			System.out.println("Tiempo empleado en escribir fichero " + String.valueOf(cuenta) +
-					": " + (finResultP - primerResultP)+ " milisegundos ; numero lineas procesadas: " + nlineas);
+					": " + (finResultP - primerResultP) + " milisegundos ; numero lineas procesadas: " + nlineas);
 			flog.writeLine(new ArrayList<String>(Arrays.asList("Fichero : " + String.valueOf(cuenta),
 					"Tiempo: " + (finResultP - primerResultP) + " milisegundos"
 			)));
 		}
 		long finResultT = System.currentTimeMillis();
 		System.out.println("Tiempo total en escribir ficheros" +
-				": " + (finResultT - primerResultT)+ " milisegundos");
+				": " + (finResultT - primerResultT) + " milisegundos");
 		flog.writeLine(new ArrayList<String>(Arrays.asList(
 				"Tiempo Total: " + (finResultT - primerResultT) + " milisegundos"
 		)));
@@ -224,8 +234,11 @@ class BlockingQueueProcessFragment {
 	private  String zipped;
 	private  boolean leer;
 	private  int n_files;
+	private String modo_parser;
+	private String modo_modif;
+	private int long_cola_logic=1000;
 
-	public BlockingQueueProcessFragment( int n_files, int tamano_files, String sobreescribir, int numero_workers, int workerId, String rutaArchivo, String zipped, boolean leer) {
+	public BlockingQueueProcessFragment( int n_files, int tamano_files, String sobreescribir, int numero_workers, int workerId, String rutaArchivo, String zipped, boolean leer, String modo_parser, String modo_modif) {
 		this.tamano_files = tamano_files;
 		this.sobreescribir = sobreescribir;
 		this.numero_workers = numero_workers;
@@ -234,6 +247,8 @@ class BlockingQueueProcessFragment {
 		this.zipped = zipped;
 		this.leer = leer;
 		this.n_files = n_files;
+		this.modo_parser = modo_parser;
+		this.modo_modif = modo_modif;
 	}
 
 	public void leer() throws Exception {
@@ -243,7 +258,13 @@ class BlockingQueueProcessFragment {
 		RepoFile flog_w;
 		int cuenta=0;
 
-		BlockingQueue queueLogic = new ArrayBlockingQueue(1000);
+		if (!leer)
+			long_cola_logic=10000;
+		else
+			long_cola_logic=1000;
+
+		BlockingQueue queueLogic = new ArrayBlockingQueue(long_cola_logic);
+
 		BlockingQueue queueFile = new ArrayBlockingQueue(1000000);
 
 		flog_r = new RepoFile(0, ",", workerId, rutaArchivo, true, false);
@@ -258,7 +279,7 @@ class BlockingQueueProcessFragment {
 		//Unico fichero
 		Runnable rwf = new WriterFile(queueFile, sobreescribir, numero_workers, workerId, rutaArchivo, zipped, 1, flog_w);
 		for (int i = 0; i < numero_workers; i++) {
-			pool_t.execute(new Transformer(queueLogic, queueFile, cuenta));
+			pool_t.execute(new Transformer(queueLogic, queueFile, cuenta, modo_parser, modo_modif));
 		}
 		Future fwf = pool_wf.submit(rwf);
 
@@ -266,7 +287,7 @@ class BlockingQueueProcessFragment {
 		while (cuenta<n_files) {
 			cuenta = cuenta + 1;
 
-			Runnable rrf = new ReaderFile(queueLogic, tamano_files, numero_workers, workerId, rutaArchivo, leer, cuenta, flog_r);
+			Runnable rrf = new ReaderFile(queueLogic, tamano_files, numero_workers, workerId, rutaArchivo, leer, cuenta, flog_r, modo_modif,queueFile);
 			Future frrf = pool_rf.submit(rrf);
 
 
@@ -320,8 +341,10 @@ class ReaderFile implements Runnable{
 	private boolean leer;
 	private int cuenta;
 	private RepoFile flog;
+	private String modo_modif;
+	protected BlockingQueue queuefile = null;
 
-	public ReaderFile(BlockingQueue queue, int tamano_files, int numero_workers, int workerId, String rutaArchivo, boolean leer, int cuenta, RepoFile flog) {
+	public ReaderFile(BlockingQueue queue, int tamano_files, int numero_workers, int workerId, String rutaArchivo, boolean leer, int cuenta, RepoFile flog, String modo_modif, BlockingQueue queuefile) {
 		this.queue = queue;
 		//this.n_files = n_files;
 		this.tamano_files = tamano_files;
@@ -331,6 +354,8 @@ class ReaderFile implements Runnable{
 		this.leer = leer;
 		this.cuenta = cuenta;
 		this.flog = flog;
+		this.modo_modif = modo_modif;
+		this.queuefile = queuefile;
 	}
 
 	public void run() {
@@ -340,14 +365,14 @@ class ReaderFile implements Runnable{
 			queue.put("2");
 			Thread.sleep(1000);
 			queue.put("3");*/
-			read_file(queue ,tamano_files, numero_workers, workerId, rutaArchivo, leer, cuenta);
+			read_file(queue ,tamano_files, numero_workers, workerId, rutaArchivo, leer, cuenta, modo_modif, queuefile);
 		//} catch (InterruptedException e) {
 		//	e.printStackTrace();
 		//}
 	}
 
 
-	public void read_file(BlockingQueue queue,int tamano_files, int numero_workers, int workerId, String rutaArchivo, boolean leer, int cuenta) {
+	public void read_file(BlockingQueue queue,int tamano_files, int numero_workers, int workerId, String rutaArchivo, boolean leer, int cuenta, String modo_modif, BlockingQueue queuefile) {
 
 			long primerResultP = System.currentTimeMillis();
 			RepoFile fleer = new RepoFile(workerId, "|", workerId, rutaArchivo,false, true);
@@ -375,7 +400,10 @@ class ReaderFile implements Runnable{
 				nlineas = nlineas + 1;
 				//Put en la Blocking Queue
 				try {
-					queue.put(buf_linea);
+					if (modo_modif.equals("0"))
+						queuefile.put(buf_linea);
+					else
+						queue.put(buf_linea);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
@@ -415,14 +443,18 @@ class Transformer implements Runnable{
 	protected BlockingQueue queuefile = null;
 	private boolean leer;
 	private int cuenta;
-	private static String separador_field = "|";
+	private static final String separador_field = "|";
 	private static final String separador_registro = "\n\r";
+	private String modo_parser;
+	private String modo_modif;
 
-	public Transformer(BlockingQueue queue, BlockingQueue queuefile, int cuenta) {
+	public Transformer(BlockingQueue queue, BlockingQueue queuefile, int cuenta, String modo_parser, String modo_modif) {
 		this.queue = queue;
 		this.queuefile = queuefile;
 		this.leer = leer;
 		this.cuenta = cuenta;
+		this.modo_parser = modo_parser;
+		this.modo_modif = modo_modif;
 	}
 
 	public void run() {
@@ -430,10 +462,10 @@ class Transformer implements Runnable{
 			while (true) {
 				String buf_linea = (String) queue.take();
 				if (buf_linea.equals("STOP")) {
-					transforma_linea( "STOP", queuefile, cuenta);
+					transforma_linea( "STOP", queuefile, cuenta, modo_parser, modo_modif);
 					return;
 				} else {
-					transforma_linea( buf_linea, queuefile, cuenta);
+					transforma_linea( buf_linea, queuefile, cuenta, modo_parser, modo_modif);
 				}
 			}
 		} catch (InterruptedException e) {
@@ -441,96 +473,99 @@ class Transformer implements Runnable{
 		}
 	}
 
-	public void transforma_linea(String buf_linea, BlockingQueue queuefile, int cuenta) {
+	public void transforma_linea(String buf_linea, BlockingQueue queuefile, int cuenta, String modo_parser, String modo_modif) {
 
 
-		long primerResultP = System.currentTimeMillis();
+		//long primerResultP = System.currentTimeMillis();
 
 		boolean seguir = false;
-		List<String> linea;
+		String buffer = "";
+		List<String> linea = new ArrayList<>();
 		if (!buf_linea.equals("STOP")) {
-			//1
-			//linea = Arrays.asList(buf_linea.split(Pattern.quote("|")));
+			switch (modo_parser)
+			{
+				case "0":
+					//no hacemos nada
+					break;
+				case "1":
+					linea = Arrays.asList(buf_linea.split(Pattern.quote("|")));
+					break;
+				case "2":
+					linea = new ArrayList<>();
+					String trozo ="";
+					for ( int i = 0; i<buf_linea.length(); i++ ) {
+						if (buf_linea.getBytes()[i] == '|')
+						{
+							linea.add(trozo);
+							trozo="";
+						}
+						else
+							trozo = trozo + (char)buf_linea.getBytes()[i];
+						//concatena_linea = concatena_linea + i.next();
+					}
+					break;
+				case "3":
+					linea = Arrays.asList(buf_linea.substring(0,1),
+							buf_linea.substring(2,18),
+							buf_linea.substring(20,21),
+							buf_linea.substring(21,21),
+							buf_linea.substring(22,23),
+							buf_linea.substring(24,28),
+							buf_linea.substring(29,33),
+							buf_linea.substring(34,36),
+							buf_linea.substring(37,46),
+							buf_linea.substring(47,55),
+							buf_linea.substring(56,64),
+							buf_linea.substring(65,69),
+							buf_linea.substring(70,74),
+							buf_linea.substring(75,76),
+							buf_linea.substring(77,81),
+							buf_linea.substring(82,86),
+							buf_linea.substring(87,107),
+							buf_linea.substring(108,121),
+							buf_linea.substring(122,172),
+							buf_linea.substring(173,176),
+							buf_linea.substring(177,201)
+					);
+					break;
+				case "4":
+					linea = Arrays.asList(buf_linea.substring(0, 121),
+							buf_linea.substring(122, 172),
+							buf_linea.substring(173, 176),
+							buf_linea.substring(177, 201)
+					);
+					break;
+			}
+			switch (modo_modif)
+			{
+				case "0":
+					//no hacemos nada
+					break;
+				case "1":
+					int count = 0;
+					for (ListIterator i = linea.listIterator(); i.hasNext(); ) {
+						//i.set("x" + i.next());
+						if (count != 0)
+							buffer = buffer + separador_field;
+						//else
+						buffer = buffer + "x" + i.next();
+						count = count + 1;
+					}
+					break;
 
-			//2
-			/*linea = new ArrayList<>();
-			String trozo ="";
-			for ( int i = 0; i<buf_linea.length(); i++ ) {
-				if (buf_linea.getBytes()[i] == '|')
-				{
-					linea.add(trozo);
-					trozo="";
+			}
+			if (modo_modif.equals("0"))
+				try {
+					queuefile.put(buf_linea);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
 				}
-				else
-					trozo = trozo + (char)buf_linea.getBytes()[i];
-				//concatena_linea = concatena_linea + i.next();
-			}*/
-
-			//3
-		linea = Arrays.asList(buf_linea.substring(0,1),
-				buf_linea.substring(2,18),
-				buf_linea.substring(20,21),
-				buf_linea.substring(21,21),
-				buf_linea.substring(22,23),
-				buf_linea.substring(24,28),
-				buf_linea.substring(29,33),
-				buf_linea.substring(34,36),
-				buf_linea.substring(37,46),
-				buf_linea.substring(47,55),
-				buf_linea.substring(56,64),
-				buf_linea.substring(65,69),
-				buf_linea.substring(70,74),
-				buf_linea.substring(75,76),
-				buf_linea.substring(77,81),
-				buf_linea.substring(82,86),
-				buf_linea.substring(87,107),
-				buf_linea.substring(108,121),
-				buf_linea.substring(122,172),
-				buf_linea.substring(173,176),
-				buf_linea.substring(177,201)
-		);
-
-			//4
-			/*linea = Arrays.asList(buf_linea.substring(0, 121),
-					buf_linea.substring(122, 172),
-					buf_linea.substring(173, 176),
-					buf_linea.substring(177, 201)
-			);*/
-			if (true) {
-				int count = 0;
-				String buffer = "";
-				for (ListIterator i = linea.listIterator(); i.hasNext(); ) {
-					//i.set("x" + i.next());
-					if (count != 0)
-						buffer = buffer + separador_field;
-					//else
-					buffer = buffer + "x" + i.next();
-					count = count + 1;
-				}
-				/*int count = 0;
-				String buffer = "";
-				for (String field : linea
-				) {
-					if (count != 0)
-						buffer = buffer + separador_field;
-					//out.newLine();
-					if (field == null) {
-						buffer = buffer + "";
-					} else if (field == "null") {
-						buffer = buffer + "";
-					} else
-						buffer = buffer + field;
-					count = count + 1;
-				}*/
-				//buffer = buffer + "\r\n"; //newLine();
-
+			else
 				try {
 					queuefile.put(buffer);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
-
-			}
 		} else {
 			try {
 				//System.out.println("TRANS: Recibido STOP");

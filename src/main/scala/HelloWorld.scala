@@ -198,6 +198,8 @@ object HelloWorld {
     var zipped = "false"
     var leer = "false"
     var hilos = "false"
+    var modo_parser = "3"
+    var modo_modif = "1"
 
     // parse connection string from command line
     val options = new Options
@@ -219,6 +221,8 @@ object HelloWorld {
     options.addOption(new Option("iszipped", true, "Indica si se comprime o no"))
     options.addOption(new Option("leer", true, "Indica si se leen los datos a esribir o no"))
     options.addOption(new Option("hilos", true, "Indica si se ejecuta WriteTest en modo hilos"))
+    options.addOption(new Option("modo_parser", true, "Modo de parsear la lectura de línea del fichero"))
+    options.addOption(new Option("modo_modif", true, "Modo de tramsformación aplicado"))
     val clp = new DefaultParser
     val cl = clp.parse(options, args)
     if (cl.getOptionValue("paginado") != null) agrupando = cl.getOptionValue("paginado")
@@ -238,11 +242,13 @@ object HelloWorld {
     if (cl.getOptionValue("iszipped") != null) zipped = cl.getOptionValue("iszipped")
     if (cl.getOptionValue("leer") != null) leer = cl.getOptionValue("leer")
     if (cl.getOptionValue("hilos") != null) hilos = cl.getOptionValue("hilos")
+    if (cl.getOptionValue("modo_parser") != null) modo_parser = cl.getOptionValue("modo_parser")
+    if (cl.getOptionValue("modo_modif") != null) modo_modif = cl.getOptionValue("modo_modif")
 
     //System.out.println("usu:" + usu + " pass:" + pass)
 
     if (mode.equals("help") || mode.equals("WriteTest")) {
-      if (mode.equals("WriteTest")) new WriteTest(args,new Integer(n_files).toInt,new Integer(tamano_files).toInt,sobreescribir, new Integer(numeroWorkers).toInt, new Integer(workerId).toInt, rutaArchivo, zipped, leer,hilos)
+      if (mode.equals("WriteTest")) new WriteTest(args,new Integer(n_files).toInt,new Integer(tamano_files).toInt,sobreescribir, new Integer(numeroWorkers).toInt, new Integer(workerId).toInt, rutaArchivo, zipped, leer,hilos, modo_parser, modo_modif)
       if (mode.equals("help")) {
         println("Argumentos:");
         println("\"eciB\" - Borra el grafo actual y regenera los nodos básicos del grafo de prueba ECI");
