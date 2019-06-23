@@ -200,6 +200,8 @@ object HelloWorld {
     var hilos = "false"
     var modo_parser = "3"
     var modo_modif = "1"
+    var cola_logic = "1000"
+    var cola_file = "1000000"
 
     // parse connection string from command line
     val options = new Options
@@ -223,6 +225,8 @@ object HelloWorld {
     options.addOption(new Option("hilos", true, "Indica si se ejecuta WriteTest en modo hilos"))
     options.addOption(new Option("modo_parser", true, "Modo de parsear la lectura de línea del fichero"))
     options.addOption(new Option("modo_modif", true, "Modo de tramsformación aplicado"))
+    options.addOption(new Option("cola_logic", true, "Tamaño cola de threads logica"))
+    options.addOption(new Option("cola_file", true, "Tamaño cola de threads de escritura file"))
     val clp = new DefaultParser
     val cl = clp.parse(options, args)
     if (cl.getOptionValue("paginado") != null) agrupando = cl.getOptionValue("paginado")
@@ -244,11 +248,13 @@ object HelloWorld {
     if (cl.getOptionValue("hilos") != null) hilos = cl.getOptionValue("hilos")
     if (cl.getOptionValue("modo_parser") != null) modo_parser = cl.getOptionValue("modo_parser")
     if (cl.getOptionValue("modo_modif") != null) modo_modif = cl.getOptionValue("modo_modif")
+    if (cl.getOptionValue("cola_logic") != null) cola_logic = cl.getOptionValue("cola_logic")
+    if (cl.getOptionValue("cola_file") != null) cola_file = cl.getOptionValue("cola_file")
 
     //System.out.println("usu:" + usu + " pass:" + pass)
 
     if (mode.equals("help") || mode.equals("WriteTest")) {
-      if (mode.equals("WriteTest")) new WriteTest(args,new Integer(n_files).toInt,new Integer(tamano_files).toInt,sobreescribir, new Integer(numeroWorkers).toInt, new Integer(workerId).toInt, rutaArchivo, zipped, leer,hilos, modo_parser, modo_modif)
+      if (mode.equals("WriteTest")) new WriteTest(args,new Integer(n_files).toInt,new Integer(tamano_files).toInt,sobreescribir, new Integer(numeroWorkers).toInt, new Integer(workerId).toInt, rutaArchivo, zipped, leer,hilos, modo_parser, modo_modif,cola_logic,cola_file)
       if (mode.equals("help")) {
         println("Argumentos:");
         println("\"eciB\" - Borra el grafo actual y regenera los nodos básicos del grafo de prueba ECI");
@@ -271,6 +277,18 @@ object HelloWorld {
         println("                          - Parámetro \"payload\" 1->Mapper, 2->Map a mano, 3->List a mano, 4->String entre comillas, 5->String con separador |6->String Fijo largo (14 promos), 7->Texto corto prueba");
         println("                          - Parámetro \"entorno\" 1->Desarrollo Vector, 2->localhost");
         println("                          - Parámetro \"sobreescribir\" 0->Escribe todos los ficheros, 1->Sobreescribe los ficheros parciales");
+        println("\"WriteTest\" -nfiles 792 -lineasfile 1043359 -numeroworkers 1 -workerid 1 -overwrite 0 -iszipped false -leer false -hilos false -modo_parser 0 -modo_modif 0");
+        println(" -nfiles -> numero de ficheros fragmentos a tratar (default 792)");
+        println(" -lineasfile -> numero de lineas por fichero, sólo tienen sentido cunado no se lee (default 1043359)");
+        println(" -numeroworkers -> usado para el numero de hilos en caso hilos=true (default 1)");
+        println(" -workerid -> indica con con id trabajará, en writeTest solo usado para prefijo de fichero (default 1)");
+        println(" -overwrite -> sobreescribe o no siempre el mismo fichero (default 0; 1 si sobreescribe");
+        println(" -iszipped false");
+        println(" -leer false");
+        println(" -hilos false");
+        println(" -modo_parser 0");
+        println(" -modo_modif 0");
+
       }
     } else {
 

@@ -14,7 +14,7 @@ public class WriteTest {
 
 	public static void main(String[] args) {
 		int n_files = 10, tamano_files = 1043359, numero_workers = 3, workerId = 1;
-		String sobreesccribir = "0", rutaArchivo = "", zipped = "true", modo_parser = "3", modo_modif = "1";
+		String sobreesccribir = "0", rutaArchivo = "", zipped = "true", modo_parser = "3", modo_modif = "1", cola_logic="1000",cola_file="1000000";
 		boolean leer = true;
 		boolean monolitico = false;
 
@@ -30,7 +30,7 @@ public class WriteTest {
 		//write_test(args,1,  826340328,"0",1,1, "","true",false); //154,5GB (200*1024*1024/201)
 
 		else {
-			BlockingQueueProcessFragment bqpf = new BlockingQueueProcessFragment(n_files, tamano_files, sobreesccribir, numero_workers, workerId, rutaArchivo, zipped, leer, modo_parser, modo_modif);
+			BlockingQueueProcessFragment bqpf = new BlockingQueueProcessFragment(n_files, tamano_files, sobreesccribir, numero_workers, workerId, rutaArchivo, zipped, leer, modo_parser, modo_modif,cola_logic,cola_file);
 			try {
 				bqpf.leer();
 			} catch (Exception e) {
@@ -40,14 +40,14 @@ public class WriteTest {
 
 	}
 
-	public WriteTest(String[] args, int n_files, int tamano_files, String sobreescribir, int numero_workers, int workerId, String rutaArchivo, String zipped, String leer, String hilos, String modo_parser, String modo_modif) {
+	public WriteTest(String[] args, int n_files, int tamano_files, String sobreescribir, int numero_workers, int workerId, String rutaArchivo, String zipped, String leer, String hilos, String modo_parser, String modo_modif,String cola_logic,String cola_file ) {
 		boolean leerb;
 		if (leer.equals("false"))
 			leerb = false;
 		else
 			leerb = true;
 		if (hilos.equals("true")) {
-			BlockingQueueProcessFragment bqpf = new BlockingQueueProcessFragment(n_files, tamano_files, sobreescribir, numero_workers, workerId, rutaArchivo, zipped, leerb, modo_parser, modo_modif);
+			BlockingQueueProcessFragment bqpf = new BlockingQueueProcessFragment(n_files, tamano_files, sobreescribir, numero_workers, workerId, rutaArchivo, zipped, leerb, modo_parser, modo_modif, cola_logic,cola_file);
 			try {
 				bqpf.leer();
 			} catch (Exception e) {
@@ -237,8 +237,9 @@ class BlockingQueueProcessFragment {
 	private String modo_parser;
 	private String modo_modif;
 	private int long_cola_logic=1000;
+	private int long_cola_file = 1000000;
 
-	public BlockingQueueProcessFragment( int n_files, int tamano_files, String sobreescribir, int numero_workers, int workerId, String rutaArchivo, String zipped, boolean leer, String modo_parser, String modo_modif) {
+	public BlockingQueueProcessFragment( int n_files, int tamano_files, String sobreescribir, int numero_workers, int workerId, String rutaArchivo, String zipped, boolean leer, String modo_parser, String modo_modif, String cola_logic,String cola_file  ) {
 		this.tamano_files = tamano_files;
 		this.sobreescribir = sobreescribir;
 		this.numero_workers = numero_workers;
@@ -249,6 +250,10 @@ class BlockingQueueProcessFragment {
 		this.n_files = n_files;
 		this.modo_parser = modo_parser;
 		this.modo_modif = modo_modif;
+		if (!cola_logic.equals(""))
+			this.long_cola_logic=new Integer(cola_logic).intValue();
+		if (!cola_file.equals(""))
+			this.long_cola_file=new Integer(cola_file).intValue();
 	}
 
 	public void leer() throws Exception {
@@ -260,12 +265,12 @@ class BlockingQueueProcessFragment {
 
 		if (!leer)
 			long_cola_logic=10000;
-		else
-			long_cola_logic=1000;
+		/*else
+			long_cola_logic=1000;*/
 
 		BlockingQueue queueLogic = new ArrayBlockingQueue(long_cola_logic);
 
-		BlockingQueue queueFile = new ArrayBlockingQueue(1000000);
+		BlockingQueue queueFile = new ArrayBlockingQueue(long_cola_file);
 
 		flog_r = new RepoFile(0, ",", workerId, rutaArchivo, true, false);
 		flog_r.abreFicheroW();
@@ -277,9 +282,9 @@ class BlockingQueueProcessFragment {
 		ExecutorService pool_wf = Executors.newFixedThreadPool(1);
 
 		//Unico fichero
-		Runnable rwf = new WriterFile(queueFile, sobreescribir, numero_workers, workerId, rutaArchivo, zipped, 1, flog_w);
+		Runnable rwf = new WriterFile(queueFile, tamano_files, sobreescribir, numero_workers, workerId, rutaArchivo, zipped, 1, flog_w);
 		for (int i = 0; i < numero_workers; i++) {
-			pool_t.execute(new Transformer(queueLogic, queueFile, cuenta, modo_parser, modo_modif));
+			pool_t.execute(new Transformer(queueLogic, queueFile, numero_workers,cuenta, modo_parser, modo_modif));
 		}
 		Future fwf = pool_wf.submit(rwf);
 
@@ -317,8 +322,10 @@ class BlockingQueueProcessFragment {
 
 
 		long finWriteT = System.currentTimeMillis();
+		System.out.println(" ");
 		System.out.println("Tiempo empleado en total " +
 				": " + (finWriteT - iniWriteT) + " milisegundos");
+		flog_w.writeLine(new ArrayList<String>(Arrays.asList(" ")));
 		flog_w.writeLine(new ArrayList<String>(Arrays.asList("Tiempo total proceso: " + (finWriteT - iniWriteT) + " milisegundos")));
 		flog_r.cierraFichero();
 		flog_w.cierraFichero();
@@ -365,7 +372,8 @@ class ReaderFile implements Runnable{
 			queue.put("2");
 			Thread.sleep(1000);
 			queue.put("3");*/
-			read_file(queue ,tamano_files, numero_workers, workerId, rutaArchivo, leer, cuenta, modo_modif, queuefile);
+		Thread.currentThread().setPriority(10);
+		read_file(queue ,tamano_files, numero_workers, workerId, rutaArchivo, leer, cuenta, modo_modif, queuefile);
 		//} catch (InterruptedException e) {
 		//	e.printStackTrace();
 		//}
@@ -374,66 +382,77 @@ class ReaderFile implements Runnable{
 
 	public void read_file(BlockingQueue queue,int tamano_files, int numero_workers, int workerId, String rutaArchivo, boolean leer, int cuenta, String modo_modif, BlockingQueue queuefile) {
 
-			long primerResultP = System.currentTimeMillis();
-			RepoFile fleer = new RepoFile(workerId, "|", workerId, rutaArchivo,false, true);
+		long primerResultP = System.currentTimeMillis();
+		long ini_leerfichero = System.nanoTime();
+		RepoFile fleer = new RepoFile(workerId, "|", workerId, rutaArchivo,false, true);
 
-			int nlineas=0;
-			int cada=0;
-			boolean seguir = false;
-			String buf_linea= "";
-			String concatena_linea = "";
-			//List<String> linea = new ArrayList<String>();
-			if (leer) {
-				fleer.abreFicheroR();
-				buf_linea = fleer.readLine();
-				seguir = buf_linea != null;
-				//ls = Arrays.stream(linea.split("|"));
+		int nlineas=0;
+		int cada=0;
+		long duration =0;
+
+		boolean seguir = false;
+		String buf_linea= "";
+		String concatena_linea = "";
+		//List<String> linea = new ArrayList<String>();
+		if (leer) {
+			fleer.abreFicheroR();
+			buf_linea = fleer.readLine();
+			seguir = buf_linea != null;
+			//ls = Arrays.stream(linea.split("|"));
 				/*if (seguir)
 					linea = Arrays.asList(buf_linea.split(Pattern.quote("|")));*/
 
+		} else {
+			buf_linea = "P|B001000811538362||7|0|null|null|00|P18354008|20190101|20190630|0000|2359|B|null|null|P - PARCEIROS HOTEIS|0040401063771|P - PARCEIROS HOTEIS GAIA                         |1  |                        ";
+			seguir = nlineas<tamano_files;
+		}
+		//while (nlineas<tamano_files) {
+		while (seguir) {
+			nlineas = nlineas + 1;
+			//Put en la Blocking Queue
+			long fin_leerfichero = System.nanoTime();
+			duration = duration + (fin_leerfichero-ini_leerfichero);
+			try {
+				if (modo_modif.equals("0"))
+					queuefile.put(buf_linea);
+				else
+					queue.put(buf_linea);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			ini_leerfichero = System.nanoTime();
+			//leer siguiente
+			if (leer) {
+				buf_linea = fleer.readLine();
+				seguir = buf_linea != null;
 			} else {
-				buf_linea = "P|B001000811538362||7|0|null|null|00|P18354008|20190101|20190630|0000|2359|B|null|null|P - PARCEIROS HOTEIS|0040401063771|P - PARCEIROS HOTEIS GAIA                         |1  |                        ";
 				seguir = nlineas<tamano_files;
 			}
-			//while (nlineas<tamano_files) {
-			while (seguir) {
-				nlineas = nlineas + 1;
-				//Put en la Blocking Queue
-				try {
-					if (modo_modif.equals("0"))
-						queuefile.put(buf_linea);
-					else
-						queue.put(buf_linea);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-				//leer siguiente
-				if (leer) {
-					buf_linea = fleer.readLine();
-					seguir = buf_linea != null;
-				} else {
-					seguir = nlineas<tamano_files;
-				}
-			}
-			if (leer) {
-				fleer.cierraFicheroR();
-			} else {
+		}
+		if (leer) {
+			fleer.cierraFicheroR();
+		} else {
 
-			}
-		/*try {
-			for (int j = 0; j < numero_workers; j++) {
-				queue.put("STOP");
-				//System.out.println("READ: Enviado STOP");
+		}
+		try {
+			for (int j = 1; j <= numero_workers; j++) {
+				queue.put("FICHERO"+j);
 			}
 		} catch (InterruptedException e) {
 			e.printStackTrace();
-		}*/
-			long finResultP = System.currentTimeMillis();
-			System.out.println("Tiempo empleado en leer fichero " + String.valueOf(cuenta) +
+		}
+		long finResultP = System.currentTimeMillis();
+		System.out.println(" ");
+		System.out.println("Tiempo empleado en procesar fichero " + String.valueOf(cuenta) +
 				": " + (finResultP - primerResultP) + " milisegundos ; numero lineas procesadas: " + nlineas);
-			flog.writeLine(new ArrayList<String>(Arrays.asList("Fichero : " + String.valueOf(cuenta),
-					"Tiempo leer: " + (finResultP - primerResultP) + " milisegundos"
-			)));
+		System.out.println("     SOLO Leer fichero " + String.valueOf(cuenta) + 	": " + duration / 1e6  + " milisegundos");
+		flog.writeLine(new ArrayList<String>(Arrays.asList(" ")));
+		flog.writeLine(new ArrayList<String>(Arrays.asList("Fichero : " + String.valueOf(cuenta),
+				"Tiempo leer: " + (finResultP - primerResultP) + " milisegundos"
+		)));
+		flog.writeLine(new ArrayList<String>(Arrays.asList(
+				"     SOLO Leer fichero " + String.valueOf(cuenta) + 	": " + duration / 1e6  + " milisegundos"
+		)));
 	}
 }
 
@@ -442,15 +461,18 @@ class Transformer implements Runnable{
 	protected BlockingQueue queue = null;
 	protected BlockingQueue queuefile = null;
 	private boolean leer;
-	private int cuenta;
+	private int cuenta, numero_workers;
 	private static final String separador_field = "|";
 	private static final String separador_registro = "\n\r";
 	private String modo_parser;
 	private String modo_modif;
+	private long duracion=0;
 
-	public Transformer(BlockingQueue queue, BlockingQueue queuefile, int cuenta, String modo_parser, String modo_modif) {
+
+	public Transformer(BlockingQueue queue, BlockingQueue queuefile,  int numero_workers,int cuenta, String modo_parser, String modo_modif) {
 		this.queue = queue;
 		this.queuefile = queuefile;
+		this.numero_workers = numero_workers;
 		this.leer = leer;
 		this.cuenta = cuenta;
 		this.modo_parser = modo_parser;
@@ -461,11 +483,23 @@ class Transformer implements Runnable{
 		try {
 			while (true) {
 				String buf_linea = (String) queue.take();
+				//long iniDuracion = System.nanoTime();
 				if (buf_linea.equals("STOP")) {
 					transforma_linea( "STOP", queuefile, cuenta, modo_parser, modo_modif);
 					return;
 				} else {
-					transforma_linea( buf_linea, queuefile, cuenta, modo_parser, modo_modif);
+					if (buf_linea.substring(0,7).equals("FICHERO")) {
+						if (buf_linea.equals("FICHERO"+numero_workers)) {
+							//long finDuracion = System.nanoTime();
+							//duracion = duracion + (finDuracion - iniDuracion);
+							System.out.println("     SOLO Procesar fichero: " + duracion / 1e6 + " milisegundos");
+							duracion = 0;
+						}
+						duracion = duracion + transforma_linea( "FICHERO", queuefile, cuenta, modo_parser, modo_modif);
+					} else
+						duracion = duracion + transforma_linea( buf_linea, queuefile, cuenta, modo_parser, modo_modif);
+					//long finDuracion = System.nanoTime();
+					//duracion = duracion + (finDuracion - iniDuracion);
 				}
 			}
 		} catch (InterruptedException e) {
@@ -473,15 +507,13 @@ class Transformer implements Runnable{
 		}
 	}
 
-	public void transforma_linea(String buf_linea, BlockingQueue queuefile, int cuenta, String modo_parser, String modo_modif) {
-
-
-		//long primerResultP = System.currentTimeMillis();
-
+	public long transforma_linea(String buf_linea, BlockingQueue queuefile, int cuenta, String modo_parser, String modo_modif) {
 		boolean seguir = false;
 		String buffer = "";
+		long iniDuracion = System.nanoTime();
+		long finDuracion = iniDuracion;
 		List<String> linea = new ArrayList<>();
-		if (!buf_linea.equals("STOP")) {
+		if (!buf_linea.equals("STOP") && !buf_linea.equals("FICHERO")) {
 			switch (modo_parser)
 			{
 				case "0":
@@ -554,6 +586,7 @@ class Transformer implements Runnable{
 					break;
 
 			}
+			finDuracion = System.nanoTime();
 			if (modo_modif.equals("0"))
 				try {
 					queuefile.put(buf_linea);
@@ -568,12 +601,12 @@ class Transformer implements Runnable{
 				}
 		} else {
 			try {
-				//System.out.println("TRANS: Recibido STOP");
 				queuefile.put(buf_linea);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
 		}
+		return (finDuracion - iniDuracion);
 	}
 }
 
@@ -591,12 +624,14 @@ class WriterFile implements Runnable{
 	private RepoFile flog;
 	private int cada=0;
 	private long primerResultP;
-	private int sr =0;
+	private int cuenta_stop =0, cuenta_fichero=0;
+	private long ini_temporal;
+	private int tamano_file;
+	private long t_proceso=0, t_duracion=0;
 
-
-
-	public WriterFile(BlockingQueue queue,  String sobreescribir, int numero_workers, int workerId, String rutaArchivo, String zipped, int cuenta, RepoFile flog) {
+	public WriterFile(BlockingQueue queue, int tamano_files,  String sobreescribir, int numero_workers, int workerId, String rutaArchivo, String zipped, int cuenta, RepoFile flog) {
 		this.queue = queue;
+		this.tamano_file = tamano_files;
 		this.numero_workers = numero_workers;
 		this.workerId = workerId;
 		this.rutaArchivo = rutaArchivo;
@@ -620,23 +655,61 @@ class WriterFile implements Runnable{
 	}
 
 	public void run() {
+		Thread.currentThread().setPriority(10);
+		int cont_bloques=0;
+		int cont_temp_lineas_estadistica=0;
+		long iniDuracion = System.currentTimeMillis();
 		try {
 			while (true) {
 				String buf_linea = (String) queue.take();
-				if (buf_linea.equals("STOP")) {
-					write_file( "STOP");
-					if (sr == numero_workers) {
-						fdatos.cierraFichero();
-						long finResultP = System.currentTimeMillis();
-						System.out.println("Tiempo empleado en escribir fichero " + String.valueOf(cuenta) +
-								": " + (finResultP - primerResultP) + " milisegundos");
-						flog.writeLine(new ArrayList<String>(Arrays.asList("Fichero : " + String.valueOf(cuenta),
-								"Tiempo escribir: " + (finResultP - primerResultP) + " milisegundos"
-						)));
-						return;
-					}
-				} else {
-					write_file( buf_linea);
+				long iniProceso = System.nanoTime();
+				cont_bloques = cont_bloques+1;
+				cont_temp_lineas_estadistica = cont_temp_lineas_estadistica + 1;
+				//if (buf_linea.equals("STOP") || buf_linea.equals("FICHERO")) {
+				switch (buf_linea) {
+					case "STOP":
+						write_file("STOP");
+						if (cuenta_stop == numero_workers) {
+							fdatos.cierraFichero();
+							long finResultP = System.currentTimeMillis();
+
+							System.out.println(" ");
+							System.out.println("Tiempo TOTAL en escribir fichero " + String.valueOf(cuenta) +
+									": " + (finResultP - primerResultP) + " milisegundos");
+
+							flog.writeLine(new ArrayList<String>(Arrays.asList(" ")));
+							flog.writeLine(new ArrayList<String>(Arrays.asList("Fichero : " + String.valueOf(cuenta),
+									"Tiempo escribir: " + (finResultP - primerResultP) + " milisegundos"
+							)));
+							return;
+						}
+						break;
+					case "FICHERO":
+						write_file("FICHERO");
+						if (cuenta_fichero == numero_workers) {
+							System.out.println("     Lineas escritas por transformer: " + cont_temp_lineas_estadistica);
+							flog.writeLine(new ArrayList<String>(Arrays.asList("     Lineas escritas por bloque transformer: " + cont_temp_lineas_estadistica)));
+							cont_temp_lineas_estadistica = 0;
+							cuenta_fichero = 0;
+						}
+						break;
+					default:
+						write_file( buf_linea);
+						break;
+				}
+				//	}
+				long finProceso = System.nanoTime();
+				t_proceso = t_proceso + (finProceso-iniProceso);
+				if (cont_bloques==tamano_file) {
+					long finDuracion = System.currentTimeMillis();
+					//t_duracion = t_duracion + (finDuracion-iniDuracion);
+					cont_bloques=0;
+					System.out.println("     SOLO Escribir Fichero: " +	t_proceso / 1e6+ " milisegundos");
+					System.out.println("     Duracion escribir Fichero: " +	(finDuracion-iniDuracion) + " milisegundos");
+					flog.writeLine(new ArrayList<String>(Arrays.asList("     SOLO Escribir Fichero: " + t_proceso / 1e6 + " milisegundos")));
+					flog.writeLine(new ArrayList<String>(Arrays.asList("     Duracion escribir Fichero: " + (finDuracion-iniDuracion) + " milisegundos")));
+					t_proceso =0;
+					iniDuracion = System.currentTimeMillis();
 				}
 			}
 		} catch (InterruptedException e) {
@@ -645,17 +718,15 @@ class WriterFile implements Runnable{
 	}
 
 	public void write_file( String linea) {
-		if (linea.equals("STOP")) {
-			sr =sr +1 ;
-			//System.out.println("WRITER: Recibido STOP");
-		} else {
-			/*cada=cada+1;
-
-			if (false && cada>25000)  {
-				fdatos.flush();
-				cada =0;
-			}*/
-			fdatos.writeLine(linea);
+		switch (linea) {
+			case "STOP":
+				cuenta_stop = cuenta_stop + 1;
+				break;
+			case "FICHERO":
+				cuenta_fichero = cuenta_fichero + 1;
+				break;
+			default:
+				fdatos.writeLine(linea);
 		}
 	}
 }
