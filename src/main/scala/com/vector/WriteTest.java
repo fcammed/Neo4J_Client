@@ -1,6 +1,7 @@
 package com.vector;
 
 import com.vector.repo.RepoFile;
+import com.vector.service.externalsort.ExternalSort;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -13,31 +14,39 @@ import java.util.regex.Pattern;
 public class WriteTest {
 
 	public static void main(String[] args) {
-		int n_files = 10, tamano_files = 1043359, numero_workers = 3, workerId = 1;
-		String sobreesccribir = "0", rutaArchivo = "", zipped = "true", modo_parser = "3", modo_modif = "1", cola_logic="1000",cola_file="1000000";
+		int n_files = 2, tamano_files = 1043359, numero_workers = 3, workerId = 1;
+		String sobreesccribir = "0", rutaArchivo = "", zipped = "true", modo_parser = "4", modo_modif = "0", cola_logic="10000000",cola_file="1000";
 		boolean leer = true;
-		boolean monolitico = false;
+		boolean monohilo = true;
 
-		//write_test(args,264,(200*1024*1024/201) ,"0",1,1, "","true",false);
-		if (monolitico)
-			write_test(args, n_files, tamano_files, sobreesccribir, numero_workers, workerId, rutaArchivo, zipped, leer, modo_parser, modo_modif); //(200*1024*1024/201)
-		// un tercio - 50 Gb ; con diferentes tamaños y número de ficheros
-		//write_test(args,264,  1043359,"0",1,1, "","true",false); //(200*1024*1024/201)
-		//write_test(args,1,  1043359,"1",1,1, "","true",false); //(200*1024*1024/201)
-		//write_test(args,26,  10594106,"0",1,1, "","false",true); //(200*1024*1024/201)
-		//write_test(args,3,  91815592,"0",1,1, "","true",false); //(200*1024*1024/201)
-		//write_test(args,1,  275446776,"0",1,1, "","true",false); //51,5GB (200*1024*1024/201)
-		//write_test(args,1,  826340328,"0",1,1, "","true",false); //154,5GB (200*1024*1024/201)
 
-		else {
-			BlockingQueueProcessFragment bqpf = new BlockingQueueProcessFragment(n_files, tamano_files, sobreesccribir, numero_workers, workerId, rutaArchivo, zipped, leer, modo_parser, modo_modif,cola_logic,cola_file);
-			try {
-				bqpf.leer();
-			} catch (Exception e) {
-				e.printStackTrace();
+
+		System.out.println("Token 63545011-24ad-4d78-b180-1f3caa55bdbd extend  into control-cache".matches("Token.*extend  into control-cache"));
+		if (true) {
+
+			//write_test(args,264,(200*1024*1024/201) ,"0",1,1, "","true",false);
+			if (monohilo)
+				write_test(args, n_files, tamano_files, sobreesccribir, numero_workers, workerId, rutaArchivo, zipped, leer, modo_parser, modo_modif); //(200*1024*1024/201)
+				// un tercio - 50 Gb ; con diferentes tamaños y número de ficheros
+				//write_test(args,264,  1043359,"0",1,1, "","true",false); //(200*1024*1024/201)
+				//write_test(args,1,  1043359,"1",1,1, "","true",false); //(200*1024*1024/201)
+				//write_test(args,26,  10594106,"0",1,1, "","false",true); //(200*1024*1024/201)
+				//write_test(args,3,  91815592,"0",1,1, "","true",false); //(200*1024*1024/201)
+				//write_test(args,1,  275446776,"0",1,1, "","true",false); //51,5GB (200*1024*1024/201)
+				//write_test(args,1,  826340328,"0",1,1, "","true",false); //154,5GB (200*1024*1024/201)
+
+			else {
+				BlockingQueueProcessFragment bqpf = new BlockingQueueProcessFragment(n_files, tamano_files, sobreesccribir, numero_workers, workerId, rutaArchivo, zipped, leer, modo_parser, modo_modif, cola_logic, cola_file);
+				try {
+					bqpf.leer();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
 			}
-		}
 
+		} else {
+			ExternalSort es = new ExternalSort("entrada.txt", 1, "salida.txt", "");
+		}
 	}
 
 	public WriteTest(String[] args, int n_files, int tamano_files, String sobreescribir, int numero_workers, int workerId, String rutaArchivo, String zipped, String leer, String hilos, String modo_parser, String modo_modif,String cola_logic,String cola_file ) {

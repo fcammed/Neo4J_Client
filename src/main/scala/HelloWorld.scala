@@ -202,6 +202,7 @@ object HelloWorld {
     var modo_modif = "1"
     var cola_logic = "1000"
     var cola_file = "1000000"
+    var nf_input = "entrada.txt"
 
     // parse connection string from command line
     val options = new Options
@@ -227,6 +228,10 @@ object HelloWorld {
     options.addOption(new Option("modo_modif", true, "Modo de tramsformación aplicado"))
     options.addOption(new Option("cola_logic", true, "Tamaño cola de threads logica"))
     options.addOption(new Option("cola_file", true, "Tamaño cola de threads de escritura file"))
+    options.addOption(new Option("nf_input", true, "nombre del archivo de entrada a ordenar"))
+    options.addOption(new Option("nf_salida", true, "nombre del archivo ordenado"))
+    options.addOption(new Option("maxtmpfiles", true, "numero maximo de ficheros temporales"))
+
     val clp = new DefaultParser
     val cl = clp.parse(options, args)
     if (cl.getOptionValue("paginado") != null) agrupando = cl.getOptionValue("paginado")
@@ -250,6 +255,7 @@ object HelloWorld {
     if (cl.getOptionValue("modo_modif") != null) modo_modif = cl.getOptionValue("modo_modif")
     if (cl.getOptionValue("cola_logic") != null) cola_logic = cl.getOptionValue("cola_logic")
     if (cl.getOptionValue("cola_file") != null) cola_file = cl.getOptionValue("cola_file")
+    if (cl.getOptionValue("nf_input") != null) nf_input = cl.getOptionValue("nf_input")
 
     //System.out.println("usu:" + usu + " pass:" + pass)
 
