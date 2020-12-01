@@ -1,5 +1,7 @@
 package com.vector.repo;
 
+import com.jcraft.jzlib.GZIPException;
+import com.jcraft.jzlib.JZlib;
 import com.vector.model.AppliedPromotion;
 import com.vector.service.CompressionUtil;
 import com.vector.service.zip.CRCInputStream;
@@ -13,19 +15,30 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.zip.*;
+import com.vector.service.zip.original.ZipEntry;
+import com.vector.service.zip.original.ZipOutputStream;
+//java.util.zip
+import java.util.zip.Deflater;
+import java.util.zip.DeflaterOutputStream;
+import java.util.zip.GZIPOutputStream;
+
+//Version de prueba con
+import com.vector.service.zip.ParallelCRC32;
+import org.apache.commons.compress.archivers.zip.*;
+import org.jooq.SelectSeekLimitStep;
 
 public class RepoFile {
 	private String nombreArchivo;
 	private String rutaArchivo;
 	private BufferedWriter out = null;
 	private BufferedReader br = null;
+	private FileOutputStream fos = null;
 	private ZipOutputStream zipStream;
+	private ZipEntry zipEntry;
 	private DeflaterOutputStream deflaterStream;
 	private Deflater zipDeflater;
 	private ByteArrayOutputStream outputStream;
-	private boolean isZipped = false;
-	private boolean isZippedSplit = false;
+	private boolean isZipped = false, isZippedSplit = false, isZippedManual=false, isZippedParallel=false;
 	private CompressionUtil cutil = null;
 	private CRCInputStream crc;
 	private GZIPHeader gzHeader;
@@ -34,13 +47,26 @@ public class RepoFile {
 	private int clineas=0;
 	//= new ZipOutputStream(
 	//		new FileOutputStream(zipFileName))
+	long size = 0;
+	long csize= 0;
+	long crcv=0;
+	ParallelCRC32 crcD = null;
+	private boolean primera_linea_CRC = true;
+	private static final int long_output_buffer = 1024;
+
+	ParallelCRC32 crcD_part = null;
+	byte[] output = null;
+	int compressedDataLength =0;
+	int err=0;
+	com.jcraft.jzlib.Deflater deflaterJZlib = null;
 
 	private String separador_field = "|";
 	private static final String separador_registro = "\n\r";
 
 	public RepoFile(String nombreArchivo, String rutaArchivo, String separador_field  ) {
+		if (rutaArchivo.equals("")) rutaArchivo = "C:/DATOSP~1/Vector/PoC/PLAYPR~1/poc-bigfiles-upload/Uploadfiles/explosionado/";
 		this.nombreArchivo = nombreArchivo;
-		this.rutaArchivo = rutaArchivo + "\\"+nombreArchivo ;
+		this.rutaArchivo = rutaArchivo + "/"+nombreArchivo ;
 		this.separador_field = separador_field;
 
 	}
@@ -65,6 +91,14 @@ public class RepoFile {
 	public RepoFile( long input_sufijo, String separador_field , int workerId, String rutaArchivo, boolean separar_por_workerId ) {
 
 		cutil = new CompressionUtil();
+		crcD_part = new ParallelCRC32();
+		output = new byte[long_output_buffer];
+		try {
+			deflaterJZlib = new com.jcraft.jzlib.Deflater(JZlib.Z_DEFAULT_COMPRESSION, true);
+		} catch (GZIPException e) {
+			// never happen, because argument is valid.
+		}
+		deflaterJZlib.setOutput(output);
 
 		if (rutaArchivo.equals("")) rutaArchivo = "C:/DATOSP~1/Vector/PoC/PLAYPR~1/poc-bigfiles-upload/Uploadfiles/explosionado/";
 		SimpleDateFormat formatf = new java.text.SimpleDateFormat("YYYMMdd_hhmmss");
@@ -117,7 +151,9 @@ public class RepoFile {
 	public void abreFicheroW() {
 		try {
 			//Writer fstream = new OutputStreamWriter(new FileOutputStream(rutaArchivo), "windows-1252");
-			Writer fstream = new OutputStreamWriter(new FileOutputStream(rutaArchivo), "UTF8");
+			//File file;
+			fos = new FileOutputStream(rutaArchivo);
+			Writer fstream = new OutputStreamWriter(fos, "UTF8");
 			out = new BufferedWriter(fstream);
 		} catch (IOException e) {
 			System.err.println("Error: " + e.getMessage());
@@ -144,25 +180,7 @@ public class RepoFile {
 
 	public void abreFicheroW_zipSplit() {
 		try {
-			//0
-			//CRCInputStream crc = new CRCInputStream(is);
-			/*outputStream = new ByteArrayOutputStream();
-			FileOutputStream fos = new FileOutputStream(rutaArchivo+".zip");
-			Writer fstream = new OutputStreamWriter(fos);
-			out = new BufferedWriter(fstream);
-
-			crc = new CRCInputStream();
-			gzHeader = new GZIPHeader();
-			gzHeader.writeBytes(outputStream);
-			out.write(outputStream.toString());
-			outputStream.reset();
-
-			zipDeflater = new Deflater(Deflater.BEST_SPEED,true);
-			deflaterStream = new DeflaterOutputStream(fos, zipDeflater);
-			isZippedSplit = true;*/
-
 			clineas=0;
-
 			//1
 			zipStream = new ZipOutputStream(new FileOutputStream(rutaArchivo+".zip"));
 			isZippedSplit = true;
@@ -172,22 +190,41 @@ public class RepoFile {
 			//entry.setCreationTime(FileTime.fromMillis(file.toFile().lastModified()));
 			entry.setComment("Fichero de salida zip");
 			zipStream.putNextEntry(entry);
+		} catch (IOException e) {
+			System.err.println("Error: " + e.getMessage());
+		}
+	}
 
-			//2
-			/*outputStream = new ByteArrayOutputStream();
-			Writer fstream = new OutputStreamWriter(new FileOutputStream(rutaArchivo+".zip"));
+	public void abreFicheroW_zipManual() {
+		try {
+			//0
+			outputStream = new ByteArrayOutputStream();
+			fos = new FileOutputStream(rutaArchivo + ".zip");
+			Writer fstream = new OutputStreamWriter(fos);
 			out = new BufferedWriter(fstream);
-			zipStream = new ZipOutputStream(outputStream);
-			isZippedSplit = true;
-			zipStream.setMethod(ZipOutputStream.DEFLATED);
-			ZipEntry entry = new ZipEntry(nombreArchivo);
-			//entry.setCreationTime(FileTime.fromMillis(file.toFile().lastModified()));
-			entry.setComment("Fichero de salida zip");
-			zipStream.putNextEntry(entry);
-			out.write(outputStream.toString());*/
+			if (true) {
+				zipStream = new ZipOutputStream(fos);
+				zipStream.setMethod(ZipOutputStream.DEFLATED);
+				zipStream.setLevel(1);
 
+				//Header LOC
+				this.zipEntry = new ZipEntry(nombreArchivo);
+				zipEntry.setComment("Fichero de salida zip");
+				zipStream.putNextEntry(zipEntry);
+				crcD = new ParallelCRC32();
+			}
+			else {
+				/*crc = new CRCInputStream();
+				gzHeader = new GZIPHeader();
+				gzHeader.writeBytes(outputStream);
+				out.write(outputStream.toString());
+				outputStream.reset();
 
-			//outputStream.reset();
+				zipDeflater = new Deflater(Deflater.BEST_SPEED, true);
+				deflaterStream = new DeflaterOutputStream(fos, zipDeflater);*/
+			}
+			clineas = 0;
+			isZippedManual = true;
 		} catch (IOException e) {
 			System.err.println("Error: " + e.getMessage());
 		}
@@ -249,8 +286,71 @@ public class RepoFile {
 		}
 	}
 
-	public void writeLine(String linea) {
+	public void writeLine(String linea,boolean ultimo) {
 		try {
+			if (isZippedManual) {
+				clineas = clineas + 1;
+				buffer = buffer + linea+ "\r\n";
+				if (clineas>=nbuffer)
+				{
+
+					{
+						//ParallelCRC32 crcD_part = null;
+						//crcD_part = new ParallelCRC32();
+						CRCUpdate(buffer, crcD_part);
+						// Compress the bytes
+						byte[] input = buffer.getBytes("UTF-8");
+						//byte[] output = new byte[long_output_buffer];
+						//int compressedDataLength =0;
+						//int err=0;
+						//JZlip
+				/*com.jcraft.jzlib.Deflater deflaterJZlib = null;
+				try {
+					deflaterJZlib = new com.jcraft.jzlib.Deflater(JZlib.Z_DEFAULT_COMPRESSION, true);
+				} catch (GZIPException e) {
+					// never happen, because argument is valid.
+				}*/
+						deflaterJZlib.setInput(input);
+						//deflaterJZlib.setOutput(output);
+						while(deflaterJZlib.total_in!=input.length &&
+								deflaterJZlib.total_out<output.length){
+							//deflaterJZlib.avail_in=deflaterJZlib.avail_out=1; // force small buffers
+							err=deflaterJZlib.deflate(JZlib.Z_SYNC_FLUSH);
+							//CHECK_ERR(deflaterJZlib, err, "deflate");
+						}
+
+						if (ultimo) {
+							while (true) {
+								deflaterJZlib.avail_out = 1;
+								err = deflaterJZlib.deflate(JZlib.Z_FINISH);
+								if (err == JZlib.Z_STREAM_END) break;
+								//CHECK_ERR(deflaterJZlib, err, "deflate");
+							}
+							err = deflaterJZlib.end();
+							//CHECK_ERR(deflaterJZlib, err, "deflateEnd");
+						}
+
+						compressedDataLength = (int) deflaterJZlib.total_out;
+
+						//combinar
+						size = size + input.length;
+						csize = csize + compressedDataLength;
+
+						if(primera_linea_CRC) {
+							crcv = crcD_part.getValue();
+							primera_linea_CRC = false;
+						} else
+							crcv = crcD.combine(crcv, crcD_part.getValue(), input.length);
+						//escribir salida
+						fos.write(output, 0, compressedDataLength);
+					}
+
+					buffer="";
+					clineas = 0;
+
+				}
+
+			} else
 			if (!isZipped)
 				if (!isZippedSplit)
 				{
@@ -301,6 +401,56 @@ public class RepoFile {
 			System.err.println("Error: " + e.getMessage());
 		}
 	}
+	/*public void writeLine(String linea, boolean ultimo) {
+		try {
+			ParallelCRC32 crcD_part = null;
+			crcD_part = new ParallelCRC32();
+			CRCUpdate(linea, crcD_part);
+			// Compress the bytes
+			byte[] input = linea.getBytes("UTF-8");
+			byte[] output = new byte[long_output_buffer];
+			int compressedDataLength =0;
+			int err=0;
+			//JZlip
+			com.jcraft.jzlib.Deflater deflaterJZlib = null;
+			try {
+				deflaterJZlib = new com.jcraft.jzlib.Deflater(JZlib.Z_DEFAULT_COMPRESSION, true);
+			} catch (GZIPException e) {
+				// never happen, because argument is valid.
+			}
+			deflaterJZlib.setInput(input);
+			deflaterJZlib.setOutput(output);
+			while(deflaterJZlib.total_in!=input.length &&
+					deflaterJZlib.total_out<output.length){
+				//deflaterJZlib.avail_in=deflaterJZlib.avail_out=1; // force small buffers
+				err=deflaterJZlib.deflate(JZlib.Z_SYNC_FLUSH);
+				CHECK_ERR(deflaterJZlib, err, "deflate");
+			}
+			while (true) {
+				deflaterJZlib.avail_out = 1;
+				err = deflaterJZlib.deflate(JZlib.Z_FINISH);
+				if (err == JZlib.Z_STREAM_END) break;
+				CHECK_ERR(deflaterJZlib, err, "deflate");
+			}
+			err = deflaterJZlib.end();
+			CHECK_ERR(deflaterJZlib, err, "deflateEnd");
+
+			compressedDataLength = (int) deflaterJZlib.total_out;
+
+			//combinar
+			size = size + input.length;
+			csize = csize + compressedDataLength;
+
+			crcv = crcD.combine(crcv, crcD_part.getValue(), input.length);
+			//escribir salida
+			fos.write(output, 0, compressedDataLength);
+
+			//deflaterStream.write(linea.getBytes(), 0, linea.length());
+			//crc.read(linea.getBytes());
+		} catch (IOException e) {
+			System.err.println("Error: " + e.getMessage());
+		}
+	}*/
 
 	public void writeLine(List<String> mbl) {
 		int count =0;
@@ -434,6 +584,18 @@ public class RepoFile {
 	public void cierraFichero() {
 
 		try {
+			if (isZippedManual) {
+				//close Zip manual by chunks
+				zipStream.closeEntry(size, csize,crcv);
+
+				//creo que redundante
+				zipEntry.setSize(size);
+				zipEntry.setCompressedSize(csize);
+				zipEntry.setCrc(crcv);
+				//fin redundante
+
+				zipStream.close();
+			} else
 			if(!isZipped) {
 				if(!isZippedSplit) {
 					if (out != null) {
@@ -492,7 +654,6 @@ public class RepoFile {
 		}
 	}
 
-
 	public static byte[] zip(final String str) {
 		if ((str == null) || (str.length() == 0)) {
 			throw new IllegalArgumentException("Cannot zip null or empty string");
@@ -508,4 +669,27 @@ public class RepoFile {
 		}
 	}
 
+	public BufferedWriter getBW() {
+		return out;
+	}
+
+	public FileOutputStream getFOS() {
+		return fos;
+	}
+
+	int CRCUpdate(String linea, ParallelCRC32 crc) throws IOException {
+		byte[] b = linea.getBytes();
+		if(b.length > -1) {
+			crc.update(b, 0, b.length);
+		}
+		return b.length;
+	}
+
+	void CHECK_ERR(com.jcraft.jzlib.Deflater z, int err, String msg) {
+		if(err!=JZlib.Z_OK){
+			if(z.msg!=null) System.out.print(z.msg+" ");
+			System.out.println(msg+" error: "+err);
+			System.exit(1);
+		}
+	}
 }

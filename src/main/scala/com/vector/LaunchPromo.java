@@ -1,6 +1,6 @@
 package com.vector;
 
-import org.neo4j.driver.v1.*;
+import org.neo4j.driver.*;
 
 import java.util.concurrent.TimeUnit;
 
@@ -30,7 +30,7 @@ public class LaunchPromo {
         Session session = driver.session();
         long iniCacheDiv = System.nanoTime();
         System.out.println("Recrear caches");
-        StatementResult resultCa = session.run("CALL eci.loadCaches(\"mio\")");
+        Result resultCa = session.run("CALL eci.loadCaches(\"mio\")");
         boolean finish = false;
         finish = resultCa.single().get("atEnd", false);
         if (finish) System.out.println("Recreada caches OK");
@@ -42,14 +42,14 @@ public class LaunchPromo {
         int cuenta =0;
         while (!finish){
             long iniImportComm = System.currentTimeMillis();
-            //StatementResult result2 = session.run("CALL eci.importPromotionsRegistries(\"" + mode + "\",100000)");
-            StatementResult result2 = session.run("CALL eci.importPromotionsRegistries(\"mio\",10000)");
+            //Result result2 = session.run("CALL eci.importPromotionsRegistries(\"" + mode + "\",100000)");
+            Result result2 = session.run("CALL eci.importPromotionsRegistries(\"mio\",10000)");
             finish = result2.single().get("atEnd", false);
             cuenta = cuenta +1 ;
             long finImportComm = System.currentTimeMillis();
             System.out.println("Tiempo empleado en llamada: " + String.valueOf(cuenta) +" , " + (finImportComm - iniImportComm)  + " milisegundos");
         }
-        StatementResult result2 = session.run("CALL eci.importPromotionsClose(\"" + mode + "\")");
+        Result result2 = session.run("CALL eci.importPromotionsClose(\"" + mode + "\")");
         session.close();
         driver.close();
         long finCacheDiv = System.nanoTime();
@@ -69,11 +69,11 @@ public class LaunchPromo {
 
         //return GraphDatabase.driver("bolt://10.202.10.64:7688",AuthTokens.basic( "neo4j", "pepito" ));
         //return GraphDatabase.driver("bolt://localhost:7687",AuthTokens.basic( "neo4j", "pepito" ));
-        return GraphDatabase.driver("bolt://localhost:7687", Config.build()
+        return GraphDatabase.driver("bolt://localhost:7687", Config.builder()
                 .withConnectionTimeout( 15, TimeUnit.MINUTES )
                 .withMaxConnectionLifetime( 30, TimeUnit.MINUTES )
                 .withMaxConnectionPoolSize(100)
-                .toConfig());
+                .build());
 
     }
 

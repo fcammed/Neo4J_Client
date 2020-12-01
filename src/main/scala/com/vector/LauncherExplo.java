@@ -5,7 +5,9 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
-import org.neo4j.driver.v1.*;
+import org.neo4j.driver.*;
+
+import org.neo4j.driver.Config;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -13,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
+
+import static org.neo4j.driver.Config.TrustStrategy.trustAllCertificates;
 
 public class LauncherExplo {
 	static String bloque_optimo = "1000";
@@ -64,7 +68,7 @@ public class LauncherExplo {
 
 		//Llama al Paginado
 		// y crear Arrays con los Id de las páginas
-		StatementResult resultP = session.run("call eci.getBarrasPagination(" + l_bloque_optimo + ")");
+		Result resultP = session.run("call eci.getBarrasPagination(" + l_bloque_optimo + ")");
 		List<Long> inicioPagina = new ArrayList<Long>();
 		List<Long> finPagina = new ArrayList<Long>();
 		while(resultP.hasNext()) {
@@ -150,7 +154,7 @@ public class LauncherExplo {
 					else
 						prueba = true;
 				}
-				StatementResult resultCa;
+				Result resultCa;
 				if (prueba) {
 					if (!desarrollo.equals(""))
 						resultCa = session.run("MATCH (c:BARRA)-[:SEGUIDO_DE*0.." + l_bloque_optimo + "]->(p) where ID(c) = " + nodeId.toString() + " CALL eci.exploitCommoditiesNode(toString(id(p)),'all','20190417','" + desarrollo + "') YIELD data  RETURN data as a");
@@ -337,7 +341,7 @@ public class LauncherExplo {
 		Driver driver = getDriver(entorno);
 		Session session = driver.session();
 
-		StatementResult resultP = session.run("CALL eci.loadCaches(\"mio\")");
+		Result resultP = session.run("CALL eci.loadCaches(\"mio\")");
 		List<Double> paginas = new ArrayList<Double>();
 		//finish = resultP.single().get("atEnd", false);
 		while(resultP.hasNext()) {
@@ -354,7 +358,7 @@ public class LauncherExplo {
 		int veces = new Integer(total) / new Integer(bloque_optimo);
 		int cuenta = 0;
 		while(veces >0) {
-			StatementResult resultCa = session.run("MATCH (c:BARRA)-[:SEGUIDO_DE*0.." + bloque_optimo + "]->(p) where ID(c) = 224 CALL eci.exploitCommoditiesNode(toString(id(p)),'all','20190417') YIELD data  RETURN data as a");
+			Result resultCa = session.run("MATCH (c:BARRA)-[:SEGUIDO_DE*0.." + bloque_optimo + "]->(p) where ID(c) = 224 CALL eci.exploitCommoditiesNode(toString(id(p)),'all','20190417') YIELD data  RETURN data as a");
 			String datos;
 			int parcial = 0;
 			int grupos = 5000;
@@ -384,25 +388,27 @@ public class LauncherExplo {
 	public static Driver getDriver(String entorno, String usu, String pass){
 
 		if (entorno.equals("1"))
-			return GraphDatabase.driver("bolt://10.202.10.64:7687",AuthTokens.basic( "neo4j", "vector-itcgroup" ), Config.build()
+			return GraphDatabase.driver("bolt://10.202.10.64:7687",AuthTokens.basic( "neo4j", "vector-itcgroup" ), Config.builder()
 					.withConnectionTimeout( 15, TimeUnit.MINUTES )
 					.withMaxConnectionLifetime( connTimeOut, TimeUnit.MINUTES )
 					.withMaxConnectionPoolSize(100)
-					.toConfig());
+					.build());
 		else
 			if (entorno.equals("2"))
 			//return GraphDatabase.driver("bolt://localhost:7687",AuthTokens.basic( "neo4j", "pepito" ));
-			return GraphDatabase.driver("bolt://localhost:7687", Config.build()
-					.withConnectionTimeout( 15, TimeUnit.MINUTES )
-					.withMaxConnectionLifetime( connTimeOut, TimeUnit.MINUTES )
-					.withMaxConnectionPoolSize(100)
-					.toConfig());
+			return GraphDatabase.driver("bolt://localhost:7687", Config.builder()
+							.withConnectionTimeout( 15, TimeUnit.MINUTES )
+							.withMaxConnectionLifetime( connTimeOut, TimeUnit.MINUTES )
+							.withMaxConnectionPoolSize(100)
+							.build()
+			);
 			else
-				return GraphDatabase.driver("bolt://" + entorno + ":7687",AuthTokens.basic( usu, pass ), Config.build()
+				return GraphDatabase.driver("bolt://" + entorno + ":7687",AuthTokens.basic( usu, pass ), Config.builder()
 								.withConnectionTimeout( 15, TimeUnit.MINUTES )
 								.withMaxConnectionLifetime( connTimeOut, TimeUnit.MINUTES )
 								.withMaxConnectionPoolSize(100)
-								.toConfig());
+								//.withFetchSize(1)
+								.build());
 	}
 	public static Driver getDriver(String entorno){
 
@@ -410,11 +416,11 @@ public class LauncherExplo {
 			return GraphDatabase.driver("bolt://10.202.10.64:7687",AuthTokens.basic( "neo4j", "vector-itcgroup" ));
 		else
 			//return GraphDatabase.driver("bolt://localhost:7687",AuthTokens.basic( "neo4j", "pepito" ));
-			return GraphDatabase.driver("bolt://localhost:7687", Config.build()
+			return GraphDatabase.driver("bolt://localhost:7687", Config.builder()
 					.withConnectionTimeout( 15, TimeUnit.MINUTES )
 					.withMaxConnectionLifetime( connTimeOut, TimeUnit.MINUTES )
 					.withMaxConnectionPoolSize(100)
-					.toConfig());
+					.build());
 
 	}
 }

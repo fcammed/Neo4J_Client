@@ -1,8 +1,9 @@
 import java.util.concurrent.TimeUnit
 
 import com.vector._
-import org.neo4j.driver.v1.summary.ResultSummary
-import org.neo4j.driver.v1.{AuthTokens, Config, Driver, GraphDatabase}
+import com.vector.service.externalsort.ExternalSort
+import org.neo4j.driver.summary.ResultSummary
+import org.neo4j.driver.{AuthTokens, Config, Driver, GraphDatabase}
 import org.apache.commons.cli._
 
 import scala.concurrent.{Future, blocking}
@@ -34,20 +35,20 @@ class Neo4jPoolConnection (entorno: String, usu: String, pass: String) {
 
 
   def getDriver(entorno: String): Driver = {
-    return if (entorno.equals("1")) GraphDatabase.driver("bolt://10.202.10.64:7687", AuthTokens.basic("neo4j", "vector-itcgroup"), Config.build.withConnectionTimeout(15, TimeUnit.MINUTES).withMaxConnectionLifetime(connTimeOut, TimeUnit.MINUTES).withMaxConnectionPoolSize(100).toConfig)
+    return if (entorno.equals("1")) GraphDatabase.driver("bolt://10.202.10.64:7687", AuthTokens.basic("neo4j", "vector-itcgroup"), Config.builder.withConnectionTimeout(15, TimeUnit.MINUTES).withMaxConnectionLifetime(connTimeOut, TimeUnit.MINUTES).withMaxConnectionPoolSize(100).build())
     else { //return GraphDatabase.driver("bolt://localhost:7687",AuthTokens.basic( "neo4j", "pepito" ));
-      GraphDatabase.driver("bolt://localhost:7687", Config.build.withConnectionTimeout(15, TimeUnit.MINUTES).withMaxConnectionLifetime(connTimeOut, TimeUnit.MINUTES).withMaxConnectionPoolSize(100).toConfig)
+      GraphDatabase.driver("bolt://localhost:7687", Config.builder.withConnectionTimeout(15, TimeUnit.MINUTES).withMaxConnectionLifetime(connTimeOut, TimeUnit.MINUTES).withMaxConnectionPoolSize(100).build())
     }
     //return GraphDatabase.driver("bolt://" + entorno + ":7687", AuthTokens.basic("neo4j", "vector-itcgroup"))
   }
 
   def getDriver(entorno: String, usu: String, pass: String): Driver = {
     //System.out.println("bolt://" + entorno + ":7687")
-    return if (entorno.equals("1")) GraphDatabase.driver("bolt://10.202.10.64:7687", AuthTokens.basic("neo4j", "vector-itcgroup"),Config.build.withConnectionTimeout(15, TimeUnit.MINUTES).withMaxConnectionLifetime(connTimeOut, TimeUnit.MINUTES).withMaxConnectionPoolSize(100).toConfig)
+    return if (entorno.equals("1")) GraphDatabase.driver("bolt://10.202.10.64:7687", AuthTokens.basic("neo4j", "vector-itcgroup"),Config.builder.withConnectionTimeout(15, TimeUnit.MINUTES).withMaxConnectionLifetime(connTimeOut, TimeUnit.MINUTES).withMaxConnectionPoolSize(100).build())
     else { //return GraphDatabase.driver("bolt://localhost:7687",AuthTokens.basic( "neo4j", "pepito" ));
-      if (entorno.equals("2"))  GraphDatabase.driver("bolt://localhost:7687", Config.build.withConnectionTimeout(15, TimeUnit.MINUTES).withMaxConnectionLifetime(connTimeOut, TimeUnit.MINUTES).withMaxConnectionPoolSize(100).toConfig)
+      if (entorno.equals("2"))  GraphDatabase.driver("bolt://localhost:7687", Config.builder.withConnectionTimeout(15, TimeUnit.MINUTES).withMaxConnectionLifetime(connTimeOut, TimeUnit.MINUTES).withMaxConnectionPoolSize(100).build())
       else
-        GraphDatabase.driver("bolt://" + entorno + ":7687", AuthTokens.basic(usu, pass),Config.build.withConnectionTimeout(15, TimeUnit.MINUTES).withMaxConnectionLifetime(connTimeOut, TimeUnit.MINUTES).withMaxConnectionPoolSize(100).toConfig)
+        GraphDatabase.driver("bolt://" + entorno + ":7687", AuthTokens.basic(usu, pass),Config.builder.withConnectionTimeout(15, TimeUnit.MINUTES).withMaxConnectionLifetime(connTimeOut, TimeUnit.MINUTES).withMaxConnectionPoolSize(100).build())
     }
     //return GraphDatabase.driver("bolt://" + entorno + ":7687", AuthTokens.basic("neo4j", "vector-itcgroup"))
   }
@@ -203,6 +204,8 @@ object HelloWorld {
     var cola_logic = "1000"
     var cola_file = "1000000"
     var nf_input = "entrada.txt"
+    var nf_salida = "salida.txt"
+    var maxtmpfiles = "1"
 
     // parse connection string from command line
     val options = new Options
@@ -256,10 +259,14 @@ object HelloWorld {
     if (cl.getOptionValue("cola_logic") != null) cola_logic = cl.getOptionValue("cola_logic")
     if (cl.getOptionValue("cola_file") != null) cola_file = cl.getOptionValue("cola_file")
     if (cl.getOptionValue("nf_input") != null) nf_input = cl.getOptionValue("nf_input")
+    if (cl.getOptionValue("nf_salida") != null) nf_salida = cl.getOptionValue("nf_salida")
+    if (cl.getOptionValue("maxtmpfiles") != null) maxtmpfiles = cl.getOptionValue("maxtmpfiles")
+
 
     //System.out.println("usu:" + usu + " pass:" + pass)
 
-    if (mode.equals("help") || mode.equals("WriteTest")) {
+    if (mode.equals("help") || mode.equals("WriteTest")|| mode.equals("Sort")) {
+      if (mode.equals("Sort")) new ExternalSort(nf_input,new Integer(maxtmpfiles).toInt,nf_salida,rutaArchivo);
       if (mode.equals("WriteTest")) new WriteTest(args,new Integer(n_files).toInt,new Integer(tamano_files).toInt,sobreescribir, new Integer(numeroWorkers).toInt, new Integer(workerId).toInt, rutaArchivo, zipped, leer,hilos, modo_parser, modo_modif,cola_logic,cola_file)
       if (mode.equals("help")) {
         println("Argumentos:");

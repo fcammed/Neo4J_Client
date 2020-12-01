@@ -4,7 +4,8 @@ import java.io._
 import java.nio.file.{Files, Paths}
 import java.util.concurrent.CompletionStage
 
-import org.neo4j.driver.v1._
+import org.neo4j.driver._
+import org.neo4j.driver.async.ResultCursor
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
@@ -103,12 +104,12 @@ object bdNeo4j {
     val p1 = record.get("a").asString() + "," + record.get("b").asString() + "," + record.get("c").asInt()
     p1 + "," + record.get("d").asString() + "," + record.get("e").asString() + "," + record.get("f").asString()
   }
-  def procesarRecordconMap (result: StatementResult): List[String] = {
+  def procesarRecordconMap (result: Result): List[String] = {
     result.asScala
         .toList
         .map(record => record.get("a").asString() + "," + record.get("b").asString() + "," + record.get("c").asInt() + "," + record.get("d").asString() + "," + record.get("e").asString() + "," + record.get("f").asString())
   }
-  def procesarRecordconForp (result: StatementResult): List[String] = {
+  def procesarRecordconForp (result: Result): List[String] = {
     val list = for (record <- result.asScala) yield {
       val p1 = record.get("a").asString() + "," + record.get("b").asString() + "," + record.get("c").asInt()
       p1 + "," + record.get("d").asString() + "," + record.get("e").asString() + "," + record.get("f").asString()
@@ -146,7 +147,7 @@ class Neo4j(pool: Driver, exploPath: String, modeloGraph: String){
                   else
                       bdNeo4j.qExplosionado("numberExploNodes","","0")
     val session = driver.session
-    val result: StatementResult = session.run(script)
+    val result: Result = session.run(script)
     val total: Long = if (result.hasNext()) result.next().get ("total").asLong() else 0L
     session.close()
     total
@@ -156,9 +157,9 @@ class Neo4j(pool: Driver, exploPath: String, modeloGraph: String){
   def generagraph_mod2  = {
 
     val session = driver.session
-    val resultdr: StatementResult = session.run(bdNeo4j.qExplosionado("deleteExploRelations","","0"))
-    val resultdn: StatementResult = session.run(bdNeo4j.qExplosionado("deleteExploNodes","","0"))
-    val result: StatementResult = session.run(bdNeo4j.qExplosionado("generateGraphExploEstruc","","0"))
+    val resultdr: Result = session.run(bdNeo4j.qExplosionado("deleteExploRelations","","0"))
+    val resultdn: Result = session.run(bdNeo4j.qExplosionado("deleteExploNodes","","0"))
+    val result: Result = session.run(bdNeo4j.qExplosionado("generateGraphExploEstruc","","0"))
     //precarga primer millón de datos del grafo tipo 1
     0 to 9 map {i =>
       session.run(bdNeo4j.qExplosionado("generateGraphExploProductos1", (3 + 100000*i).toString,"0"))
@@ -174,8 +175,8 @@ class Neo4j(pool: Driver, exploPath: String, modeloGraph: String){
     val date = System.currentTimeMillis()
     println("codigoAsync " + codigo + "direc " + path)
     val script = bdNeo4j.qExplosionado("exportExplosionado",codigo,"0")
-    val session = driver.session
-    val cursorStage: CompletionStage[StatementResultCursor]  = session.runAsync(script) //.thenComposeAsync( cursor => cursor.listAsync( record => record.get())
+    val session = driver.asyncSession()
+    val cursorStage: CompletionStage[ResultCursor]  = session.runAsync(script) //.thenComposeAsync( cursor => cursor.listAsync( record => record.get())
     val cursorFuture = toScala(cursorStage)
 
     //val basename = """C:/DATOSP~1/Vector/PoC/PLAYPR~1/poc-bigfiles-upload/Uploadfiles/explosionado/"""
@@ -285,7 +286,7 @@ class Neo4j(pool: Driver, exploPath: String, modeloGraph: String){
       else
         bdNeo4j.qExplosionado("exportExplosionado_like",codigo,"0")
     val session = driver.session
-    val result: StatementResult = session.run(script)
+    val result: Result = session.run(script)
 
     //val basename = """C:/DATOSP~1/Vector/PoC/PLAYPR~1/poc-bigfiles-upload/Uploadfiles/explosionado/"""
     val basename = path
@@ -310,7 +311,7 @@ class Neo4j(pool: Driver, exploPath: String, modeloGraph: String){
     (record_fetch, List((System.currentTimeMillis() - date).toString))
   }
 
-  def procesar_result_List_agregada(result: StatementResult, out: BufferedWriter, logout: BufferedWriter, html: Int, filewrite: Int, date: Long, datew: Long): Vector[Explosionado] = {
+  def procesar_result_List_agregada(result: Result, out: BufferedWriter, logout: BufferedWriter, html: Int, filewrite: Int, date: Long, datew: Long): Vector[Explosionado] = {
     var record_fetch: Vector[Explosionado] = Vector()
     var record_post: ListBuffer[Record] = ListBuffer()
 
@@ -442,7 +443,7 @@ class Neo4j(pool: Driver, exploPath: String, modeloGraph: String){
     return (record_fetch,contador)
   }
 
-  def procesar_result_campos(result: StatementResult, out: BufferedWriter, logout: BufferedWriter, html: Int, filewrite: Int, date: Long, datew: Long): Vector[Explosionado] = {
+  def procesar_result_campos(result: Result, out: BufferedWriter, logout: BufferedWriter, html: Int, filewrite: Int, date: Long, datew: Long): Vector[Explosionado] = {
     var record_fetch: Vector[Explosionado] = Vector()
 
     var indice_promos = new scala.collection.mutable.HashMap[String, Int]
@@ -561,7 +562,7 @@ class Neo4j(pool: Driver, exploPath: String, modeloGraph: String){
     }
     val date = System.currentTimeMillis()
     val session = driver.session
-    val result: StatementResult = session.run(script)
+    val result: Result = session.run(script)
 
     var record_fetch: Vector[Promocion] = Vector()
     var indice_promos = new scala.collection.mutable.HashMap[String,Int]
@@ -605,8 +606,8 @@ class Neo4j(pool: Driver, exploPath: String, modeloGraph: String){
       case _  => bdNeo4j.qListExploCodigoplugin(codigo)
     }
 
-    val session = driver.session
-    val cursorStage: CompletionStage[StatementResultCursor]  = session.runAsync(script)
+    val session = driver.asyncSession()
+    val cursorStage: CompletionStage[ResultCursor]  = session.runAsync(script)
     val cursorFuture = toScala(cursorStage)
 
     //val result = cursorFuture.foreach(r => r.nextAsync())
@@ -666,10 +667,10 @@ class Neo4j(pool: Driver, exploPath: String, modeloGraph: String){
 
     var record_fetch: Vector[Promocion] = Vector()
 
-    val session = driver.session
+    val session = driver.asyncSession
 
     //val result: StatementResult = session.run(script)
-    val cursorStage: CompletionStage[StatementResultCursor]  = session.runAsync(script)
+    val cursorStage: CompletionStage[ResultCursor]  = session.runAsync(script)
     val cursorFuture = toScala(cursorStage)
     val result1 = cursorFuture.flatMap(f => toScala(f.listAsync()))(bc)
     result1.map {
@@ -694,7 +695,7 @@ class Neo4j(pool: Driver, exploPath: String, modeloGraph: String){
           out.write("Ningún acierto")
           out.close()
         }
-      session.close()
+      session.closeAsync()
     //record_fetch = promosParcialesAplicables(parcial_promo) ++ record_fetch
 	  val dur2 = System.currentTimeMillis()
     val durd2 = dur2 - date
@@ -718,8 +719,8 @@ class Neo4j(pool: Driver, exploPath: String, modeloGraph: String){
   def getDEPRECATEDAsociatepromotionsAsync(codigo: Any, tipo: Int, bc: ExecutionContext): Future[(Vector[Promocion], List[String])] = {
     //implicit val ec: ExecutionContext = bc
     val script = if (tipo==0) bdNeo4j.qListPromCodigo(codigo) else bdNeo4j.qListExploCodigo(codigo)
-    val session = driver.session
-    val cursorStage: CompletionStage[StatementResultCursor]  = session.runAsync(script)
+    val session = driver.asyncSession
+    val cursorStage: CompletionStage[ResultCursor]  = session.runAsync(script)
 
     val result: CompletionStage[Record] = cursorStage.thenCompose(f => f.nextAsync())
 

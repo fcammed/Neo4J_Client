@@ -1,7 +1,7 @@
 package com.vector;
 import io.reactiverse.pgclient.*;
 import io.vertx.core.Vertx;
-import org.neo4j.driver.v1.*;
+import org.neo4j.driver.*;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -34,32 +34,32 @@ public class launchercomo {
             Session session = driver.session();
             long iniCacheDiv = System.nanoTime();
             System.out.println("Creando Indice de Tallas");
-            StatementResult resultiT = session.run("CREATE INDEX ON :TALLA(id)");
+            Result resultiT = session.run("CREATE INDEX ON :TALLA(id)");
             System.out.println("Creando Indice de Barras");
-            StatementResult resultiB = session.run("CREATE INDEX ON :BARRA(id)");
+            Result resultiB = session.run("CREATE INDEX ON :BARRA(id)");
             System.out.println("Creando Indice de Familia");
-            StatementResult resultiF = session.run("CREATE INDEX ON :FAMILIA(id)");
+            Result resultiF = session.run("CREATE INDEX ON :FAMILIA(id)");
             System.out.println("Creando Indice de Uneco");
-            StatementResult resultiU = session.run("CREATE INDEX ON :UNECO(id)");
+            Result resultiU = session.run("CREATE INDEX ON :UNECO(id)");
             System.out.println("Creando Indice de Empresa");
-            StatementResult resultiE = session.run("CREATE INDEX ON :EMPRESA(id)");
+            Result resultiE = session.run("CREATE INDEX ON :EMPRESA(id)");
             System.out.println("Creando Indice de Division");
-            StatementResult resultiD = session.run("CREATE INDEX ON :DIVISION(id)");
+            Result resultiD = session.run("CREATE INDEX ON :DIVISION(id)");
             //session.run("CALL eci.initPostgresCommoditiesImport(\"mio\",\"vector\",\"hrkerQu2yNMmBz9H\",\"jdbc:postgresql://10.202.10.64:5432/catalogo?currentSchema=cdc\",10000)").consume();
-            session.run("CALL eci.initPostgresCommoditiesImport(\"" + mode+ "\",\"vector\",\"hrkerQu2yNMmBz9H\",\"jdbc:postgresql://10.202.10.64:5432/catalogo?currentSchema=cdc\",10000)").consume();
+            session.run("CALL eci.initPostgresCommoditiesImport(\"" + mode+ "\",\"vector\",\"hrkerQu2yNMmBz9H\",\"jdbc:postgresql://10.202.10.64:5432/catalogo?currentSchema=cdc\",1)").consume(); //0000)").consume();
             boolean finish = false;
             int cuenta =0;
             while (!finish) { //|| (cuenta<((22000000/100000)/2))&&(total.equals("P")) ){
-                //StatementResult result2 = session.run("CALL eci.importCommodityRegistries(\"mio\",100000)");
+                //Result result2 = session.run("CALL eci.importCommodityRegistries(\"mio\",100000)");
 				long iniImportComm = System.currentTimeMillis();
-                StatementResult result2 = session.run("CALL eci.importCommodityRegistries(\"" + mode + "\",50000)");
+                Result result2 = session.run("CALL eci.importCommodityRegistries(\"" + mode + "\",50000)");
                 finish = result2.single().get("atEnd", false);
                 cuenta = cuenta +1 ;
 				long finImportComm = System.currentTimeMillis();
 				System.out.println("Tiempo empleado en llamada: " + String.valueOf(cuenta) +" , " + (finImportComm - iniImportComm)  + " milisegundos");
             }
-            //StatementResult result2 = session.run("CALL eci.importCommodityClose(\"mio\")");
-            StatementResult result2 = session.run("CALL eci.importCommodityClose(\"" + mode + "\")");
+            //Result result2 = session.run("CALL eci.importCommodityClose(\"mio\")");
+            Result result2 = session.run("CALL eci.importCommodityClose(\"" + mode + "\")");
             session.close();
             driver.close();
             // TODO Auto-generated method stub
@@ -162,11 +162,11 @@ public class launchercomo {
 
         //return GraphDatabase.driver("bolt://10.202.10.64:7688",AuthTokens.basic( "neo4j", "pepito" ));
         //return GraphDatabase.driver("bolt://localhost:7687",AuthTokens.basic( "neo4j", "pepito" ));
-        return GraphDatabase.driver("bolt://localhost:7687", Config.build()
+        return GraphDatabase.driver("bolt://localhost:7687", Config.builder()
                 .withConnectionTimeout( 15, TimeUnit.MINUTES )
                 .withMaxConnectionLifetime( 30, TimeUnit.MINUTES )
                 .withMaxConnectionPoolSize(100)
-                .toConfig());
+                .build());
 
     }
 }

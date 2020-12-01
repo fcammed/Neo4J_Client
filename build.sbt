@@ -12,7 +12,8 @@ autoScalaLibrary := false
 
 mainClass in assembly := Some("HelloWorld")
 
-libraryDependencies += "org.neo4j.driver" % "neo4j-java-driver" % "1.5.1"
+//libraryDependencies += "org.neo4j.driver" % "neo4j-java-driver" % "1.5.1"
+libraryDependencies += "org.neo4j.driver" % "neo4j-java-driver" % "4.0.1"
 // https://mvnrepository.com/artifact/org.scala-lang.modules/scala-java8-compat
 libraryDependencies += "org.scala-lang.modules" %% "scala-java8-compat" % "0.8.0"
 // https://mvnrepository.com/artifact/org.scala-lang/scala-library
@@ -33,6 +34,12 @@ libraryDependencies += "org.redisson" % "redisson" % "3.2.0"
 
 // https://mvnrepository.com/artifact/commons-cli/commons-cli
 libraryDependencies += "commons-cli" % "commons-cli" % "1.4"
+
+// https://mvnrepository.com/artifact/org.apache.commons/commons-compress
+libraryDependencies += "org.apache.commons" % "commons-compress" % "1.18"
+
+// https://mvnrepository.com/artifact/com.jcraft/jzlib
+libraryDependencies += "com.jcraft" % "jzlib" % "1.1.3"
 
 
 lazy val root = (project in file(".")).enablePlugins()
